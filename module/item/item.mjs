@@ -1,0 +1,1 @@
+export class D100Item extends Item {}

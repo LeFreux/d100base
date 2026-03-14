@@ -1,0 +1,118 @@
+<form class="sheet-body">
+
+<h1>
+  <input type="text" name="name" value="{{actor.name}}">
+</h1>
+
+<h2>État de santé</h2>
+
+<select name="system.injuryState">
+  <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
+  <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
+  <option value="modererement-blesse" {{#if (eq system.injuryState "modererement-blesse")}}selected{{/if}}>Modérément blessé</option>
+  <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
+  <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
+  <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
+</select>
+
+<h2>Caractéristiques</h2>
+
+<div>
+  <span>Corps-à-Corps</span>
+  <input type="number" name="system.attributes.corpsacorps" value="{{system.attributes.corpsacorps}}" min="0" max="100">
+  <button type="button" data-roll="corpsacorps">Jet</button>
+</div>
+
+<div>
+  <span>Capacité de Tir</span>
+  <input type="number" name="system.attributes.capacitedetir" value="{{system.attributes.capacitedetir}}" min="0" max="100">
+  <button type="button" data-roll="capacitedetir">Jet</button>
+</div>
+
+<div>
+  <span>Force</span>
+  <input type="number" name="system.attributes.force" value="{{system.attributes.force}}" min="0" max="100">
+  <button type="button" data-roll="force">Jet</button>
+</div>
+
+<div>
+  <span>Agilité</span>
+  <input type="number" name="system.attributes.agilite" value="{{system.attributes.agilite}}" min="0" max="100">
+  <button type="button" data-roll="agilite">Jet</button>
+</div>
+
+<div>
+  <span>Intelligence</span>
+  <input type="number" name="system.attributes.intelligence" value="{{system.attributes.intelligence}}" min="0" max="100">
+  <button type="button" data-roll="intelligence">Jet</button>
+</div>
+
+<div>
+  <span>Perception</span>
+  <input type="number" name="system.attributes.perception" value="{{system.attributes.perception}}" min="0" max="100">
+  <button type="button" data-roll="perception">Jet</button>
+</div>
+
+<div>
+  <span>Stress</span>
+  <input type="number" name="system.attributes.stress" value="{{system.attributes.stress}}" min="0" max="100">
+  <button type="button" data-roll="stress">Jet</button>
+</div>
+
+<h2>Inventaire</h2>
+
+<ul class="inventory-list">
+
+{{#each inventory}}
+<li class="item" data-item-id="{{_id}}">
+
+<img src="{{img}}" width="24" height="24">
+
+<span class="item-name">{{name}}</span>
+
+<input
+type="number"
+class="item-qty"
+value="{{system.quantity}}"
+min="0">
+
+<button class="item-delete">🗑</button>
+
+</li>
+{{/each}}
+
+</ul>
+
+<h2>Conteneurs</h2>
+
+{{#each containers}}
+
+<h3 class="container" data-container-id="{{_id}}">
+{{name}}
+</h3>
+
+<ul>
+{{#each contents}}
+
+<li class="item" data-item-id="{{_id}}">
+
+<img src="{{img}}" width="24">
+
+<span>{{name}}</span>
+
+<input
+type="number"
+class="item-qty"
+value="{{system.quantity}}"
+min="0">
+
+<button class="item-delete">🗑</button>
+
+</li>
+
+{{/each}}
+</ul>
+
+{{/each}}
+
+</form>

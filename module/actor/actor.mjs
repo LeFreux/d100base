@@ -1,10 +1,72 @@
 export class D100Actor extends Actor {
+
+  prepareDerivedData() {
+    super.prepareDerivedData();
+
+    this._normalizeEmbeddedItems();
+    this._prepareInventoryTotals();
+  }
+
+  /**
+   * Harmonise les anciennes données (system.container)
+   * avec la nouvelle structure (system.containerId),
+   * sans casser les fiches déjà existantes.
+   */
+  _normalizeEmbeddedItems() {
+    for (const item of this.items) {
+      const system = item.system;
+
+      const legacyContainer = system.container ?? null;
+      const currentContainerId = system.containerId ?? null;
+      const normalizedContainerId = currentContainerId ?? legacyContainer ?? null;
+
+      system.containerId = normalizedContainerId;
+      system.container = normalizedContainerId;
+
+      if (system.quantity === undefined || system.quantity === null) {
+        system.quantity = 1;
+      }
+
+      if (system.weight === undefined || system.weight === null) {
+        system.weight = 0;
+      }
+
+      if (system.unitWeight === undefined || system.unitWeight === null) {
+        system.unitWeight = 0;
+      }
+
+      if (system.isContainer && typeof system.expanded !== "boolean") {
+        system.expanded = true;
+      }
+    }
+  }
+
+  /**
+   * Poids total porté par l'acteur :
+   * on additionne seulement les items racine
+   * pour éviter de compter deux fois le contenu
+   * des conteneurs.
+   */
+  _prepareInventoryTotals() {
+    let total = 0;
+
+    for (const item of this.items) {
+      const parentId = item.system.containerId ?? item.system.container ?? null;
+
+      if (!parentId) {
+        total += Number(item.system.weight) || 0;
+      }
+    }
+
+    this.system.totalWeight = Math.round(total * 100) / 100;
+  }
+
   async rollAttribute(attributeKey) {
-    const attributeValue = this.system.attributes?.[attributeKey] ?? 0;
+    const attributeValue = Number(this.system.attributes?.[attributeKey] ?? 0);
 
     const labels = {
-      corpsacorps: "Corps-à-Corps",
-      capacitedetir: "Capacité de Tir",
+      corpsacorps: "Corps-à-corps",
+      capacitedetir: "Capacité de tir",
       force: "Force",
       agilite: "Agilité",
       intelligence: "Intelligence",

@@ -1,33 +1,187 @@
 <form class="sheet-body">
 
-<header class="sheet-header">
+<header class="item-header">
 
-<img src="{{item.img}}" data-edit="img" width="64" height="64">
+<img class="item-icon"
+src="{{item.img}}"
+data-edit="img">
 
-<h1>
-<input name="name" type="text" value="{{item.name}}">
-</h1>
+<div class="item-header-fields">
 
-</header>
+<input
+class="item-name"
+name="name"
+type="text"
+value="{{item.name}}">
 
-<h2>Type</h2>
+<div class="item-secondary-fields">
 
+<div class="secondary-row">
+
+<label>
+Poids unitaire
+<input
+type="number"
+name="system.unitWeight"
+value="{{system.unitWeight}}"
+{{#if system.isContainer}}readonly{{/if}}>
+</label>
+
+<label>
+Quantité
+<input
+type="number"
+name="system.quantity"
+value="{{system.quantity}}">
+</label>
+
+<label>
+Poids total
+<input
+type="number"
+name="system.weight"
+value="{{system.weight}}"
+readonly>
+</label>
+
+</div>
+
+<div class="secondary-row">
+
+<label>
+Type
 <select name="system.category">
 {{selectOptions categories selected=system.category labelAttr="label" valueAttr="value"}}
 </select>
-
-<label>
-<input type="checkbox" name="system.isContainer" {{checked system.isContainer}}>
-Cet objet est un conteneur
 </label>
 
-<h2>Quantité</h2>
+<label class="container-checkbox">
+<input
+type="checkbox"
+name="system.isContainer"
+{{checked system.isContainer}}>
+Conteneur
+</label>
 
-<input type="number" name="system.quantity" value="{{system.quantity}}">
+</div>
 
-<h2>Poids</h2>
+<div class="secondary-row">
 
-<input type="number" name="system.weight" value="{{system.weight}}">
+<section class="item-properties">
+
+{{#if system.isContainer}}
+
+<label>
+Poids (vide)
+<input
+type="number"
+name="system.emptyWeight"
+value="{{system.emptyWeight}}">
+</label>
+
+<label>
+Capacité max
+<input
+type="number"
+name="system.capacityWeight"
+value="{{system.capacityWeight}}">
+</label>
+
+{{/if}}
+
+</section>
+</div>
+
+
+</div>
+
+</div>
+
+</header>
+
+{{#if system.isContainer}}
+
+<h2>Contenu</h2>
+
+<div class="container-total-weight">
+Poids total des objets : {{formatNumberClean contentWeight}} kg
+</div>
+
+<div class="container-default-contents">
+
+<div class="container-scroll">
+
+<ul class="default-content-list">
+
+<li class="default-content-header">
+
+<span class="content-col-name">
+Nom
+</span>
+
+<span class="content-col-qty">
+Quantité
+</span>
+
+<span class="content-col-weight">
+Poids
+</span>
+
+<span class="content-col-delete">
+X
+</span>
+
+</li>
+
+{{#each system.defaultContents as |content index|}}
+
+<li class="default-content-row" data-index="{{index}}" draggable="true">
+
+<span class="content-name item-open" data-index="{{index}}">
+
+<img
+class="content-icon"
+src="{{content.img}}"
+width="30"
+height="30">
+
+{{content.name}}
+
+</span>
+
+<div class="content-qty">
+
+<button type="button" class="qty-minus5">--</button>
+<button type="button" class="qty-minus">-</button>
+
+<span class="qty-value">
+{{content.quantity}}
+</span>
+
+<button type="button" class="qty-plus">+</button>
+<button type="button" class="qty-plus5">++</button>
+
+</div>
+
+<span class="content-weight">
+{{formatNumberClean content.weight}}
+</span>
+
+<button type="button" class="remove-default-content">
+✖
+</button>
+
+</li>
+
+{{/each}}
+
+</ul>
+
+</div>
+
+</div>
+
+{{/if}}
 
 <h2>Description</h2>
 

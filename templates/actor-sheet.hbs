@@ -1,118 +1,131 @@
-<form class="sheet-body">
+<form class="sheet-body actor-layout">
 
-<h1>
-  <input type="text" name="name" value="{{actor.name}}">
-</h1>
+  <!-- ================= PORTRAIT ================= -->
+  <section class="portrait-panel">
+    <h2>Portrait</h2>
+    <img src="{{actor.img}}" data-edit="img" alt="{{actor.name}}">
+  </section>
 
-<h2>État de santé</h2>
 
-<select name="system.injuryState">
-  <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
-  <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
-  <option value="modererement-blesse" {{#if (eq system.injuryState "modererement-blesse")}}selected{{/if}}>Modérément blessé</option>
-  <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
-  <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
-  <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
-</select>
+  <!-- ================= NOM ================= -->
+  <section class="name-panel">
+    <label>Nom</label>
+    <input type="text" name="name" value="{{actor.name}}">
+  </section>
 
-<h2>Caractéristiques</h2>
 
-<div>
-  <span>Corps-à-Corps</span>
-  <input type="number" name="system.attributes.corpsacorps" value="{{system.attributes.corpsacorps}}" min="0" max="100">
-  <button type="button" data-roll="corpsacorps">Jet</button>
-</div>
+  <!-- ================= ETAT ================= -->
+  <section class="injury-panel">
+    <label>État</label>
 
-<div>
-  <span>Capacité de Tir</span>
-  <input type="number" name="system.attributes.capacitedetir" value="{{system.attributes.capacitedetir}}" min="0" max="100">
-  <button type="button" data-roll="capacitedetir">Jet</button>
-</div>
+    <select name="system.injuryState">
+      <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
+      <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
+      <option value="modererement-blesse" {{#if (eq system.injuryState "modererement-blesse")}}selected{{/if}}>Modérément blessé</option>
+      <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
+      <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
+      <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
+    </select>
+  </section>
 
-<div>
-  <span>Force</span>
-  <input type="number" name="system.attributes.force" value="{{system.attributes.force}}" min="0" max="100">
-  <button type="button" data-roll="force">Jet</button>
-</div>
 
-<div>
-  <span>Agilité</span>
-  <input type="number" name="system.attributes.agilite" value="{{system.attributes.agilite}}" min="0" max="100">
-  <button type="button" data-roll="agilite">Jet</button>
-</div>
+  <!-- ================= CARACTERISTIQUES ================= -->
+  <section class="attributes-panel">
 
-<div>
-  <span>Intelligence</span>
-  <input type="number" name="system.attributes.intelligence" value="{{system.attributes.intelligence}}" min="0" max="100">
-  <button type="button" data-roll="intelligence">Jet</button>
-</div>
+    <h2>Caractéristiques</h2>
 
-<div>
-  <span>Perception</span>
-  <input type="number" name="system.attributes.perception" value="{{system.attributes.perception}}" min="0" max="100">
-  <button type="button" data-roll="perception">Jet</button>
-</div>
+    <div class="attributes-row">
 
-<div>
-  <span>Stress</span>
-  <input type="number" name="system.attributes.stress" value="{{system.attributes.stress}}" min="0" max="100">
-  <button type="button" data-roll="stress">Jet</button>
-</div>
+      {{#each system.attributes}}
 
-<h2>Inventaire</h2>
+      <div class="attribute-card">
 
-<ul class="inventory-list">
+        <span class="attribute-name">
+          {{localize (concat "D100BASE.Attributes." @key)}}
+        </span>
 
-{{#each inventory}}
-<li class="item" data-item-id="{{_id}}">
+        <input
+          type="number"
+          name="system.attributes.{{@key}}"
+          value="{{this}}"
+          min="0"
+          max="100">
 
-<img src="{{img}}" width="24" height="24">
+        <button
+          type="button"
+          data-roll="{{@key}}">
+          Jet
+        </button>
 
-<span class="item-name">{{name}}</span>
+      </div>
 
-<input
-type="number"
-class="item-qty"
-value="{{system.quantity}}"
-min="0">
+      {{/each}}
 
-<button class="item-delete">🗑</button>
+    </div>
 
-</li>
-{{/each}}
+  </section>
 
-</ul>
 
-<h2>Conteneurs</h2>
+  <!-- ================= INVENTAIRE ================= -->
+  <section class="inventory-panel">
 
-{{#each containers}}
+    <h2 class="inventory-title">
+      Inventaire
+      <span class="inventory-total">
+        {{formatNumberClean system.totalWeight}} kg
+      </span>
+    </h2>
 
-<h3 class="container" data-container-id="{{_id}}">
-{{name}}
-</h3>
+	<div class="inventory-scroll">
 
-<ul>
-{{#each contents}}
+	  <ul class="inventory-list">
 
-<li class="item" data-item-id="{{_id}}">
+		<!-- HEADER -->
+		<li class="inventory-header">
 
-<img src="{{img}}" width="24">
+		  <!-- toggle -->
+		  <span></span>
 
-<span>{{name}}</span>
+		  <!-- icon (MANQUANT AVANT) -->
+		  <span></span>
 
-<input
-type="number"
-class="item-qty"
-value="{{system.quantity}}"
-min="0">
+		  <!-- name -->
+		  <span class="sortable" data-sort="name">
+			Nom <span class="sort-icon">▶</span>
+		  </span>
 
-<button class="item-delete">🗑</button>
+		  <!-- type -->
+		  <span class="sortable" data-sort="type">
+			Type <span class="sort-icon">▶</span>
+		  </span>
 
-</li>
+		  <!-- qty -->
+		  <span class="sortable" data-sort="quantity">
+			Qté <span class="sort-icon">▶</span>
+		  </span>
 
-{{/each}}
-</ul>
+		  <!-- weight -->
+		  <span class="sortable" data-sort="weight">
+			Poids <span class="sort-icon">▶</span>
+		  </span>
 
-{{/each}}
+		  <!-- extract -->
+		  <span></span>
+
+		  <!-- delete -->
+		  <span></span>
+
+		</li>
+
+		<!-- TREE -->
+		{{#each inventoryTree}}
+		  {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
+		{{/each}}
+
+	  </ul>
+
+	</div>
+
+  </section>
 
 </form>

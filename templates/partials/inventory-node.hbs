@@ -1,0 +1,90 @@
+<li
+  class="item {{#if node.system.isContainer}}container{{/if}}"
+  data-item-id="{{node.id}}"
+  style="padding-left: {{multiply node.depth 12}}px;"
+>
+
+  <!-- TOGGLE -->
+  {{#if node.system.isContainer}}
+    <div
+      class="container-toggle"
+      data-container-id="{{node.id}}"
+      title="Ouvrir / Fermer"
+    >
+      {{#if node.expanded}}▼{{else}}▶{{/if}}
+    </div>
+  {{else}}
+    <div class="container-spacer"></div>
+  {{/if}}
+
+  <!-- ICON -->
+  <img
+    class="inventory-icon"
+    src="{{node.img}}"
+    width="24"
+    height="24"
+  />
+
+  <!-- NAME -->
+<div class="item-name">
+  {{node.name}}
+</div>
+
+  <!-- TYPE -->
+<div class="item-type">
+  {{node.system.category}}
+</div>
+
+  <!-- QTY -->
+  <input
+    class="item-qty"
+    type="number"
+    min="0"
+    value="{{node.system.quantity}}"
+  />
+
+  <!-- WEIGHT -->
+  <div class="item-weight">
+    {{#if node.system.isContainer}}
+      {{formatNumberClean node.system.weight}} kg
+      {{#if node.system.capacityWeight}}
+        / {{formatNumberClean node.system.capacityWeight}} kg
+      {{/if}}
+    {{else}}
+      {{formatNumberClean node.system.weight}} kg
+    {{/if}}
+  </div>
+
+  <!-- EXTRACT -->
+  {{#if node.containerId}}
+    <div
+      class="item-extract"
+      data-item-id="{{node.id}}"
+      title="Sortir du conteneur"
+    >
+      🡅
+    </div>
+  {{else}}
+    <div></div>
+  {{/if}}
+
+  <!-- DELETE -->
+  <div
+    class="item-delete"
+    data-item-id="{{node.id}}"
+    title="Supprimer"
+  >
+    ✖
+  </div>
+
+</li>
+
+{{#if node.system.isContainer}}
+  <ul
+    class="container-children {{#unless node.expanded}}collapsed{{/unless}}"
+  >
+    {{#each node.contents as |child|}}
+      {{> "systems/d100base/templates/partials/inventory-node.hbs" node=child}}
+    {{/each}}
+  </ul>
+{{/if}}

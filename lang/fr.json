@@ -1,5 +1,17 @@
 {
-  "D100BASE.Name": "D100 Base",
-  "D100BASE.SheetActor": "Feuille D100 Personnage",
-  "D100BASE.SheetItem": "Feuille D100 Objet"
+  "D100BASE": {
+    "Name": "D100 Base",
+    "SheetActor": "Feuille D100 Personnage",
+    "SheetItem": "Feuille D100 Objet",
+
+    "Attributes": {
+      "corpsacorps": "Corps-à-corps",
+      "capacitedetir": "Capacité de tir",
+      "force": "Force",
+      "agilite": "Agilité",
+      "intelligence": "Intelligence",
+      "perception": "Perception",
+      "stress": "Stress"
+    }
+  }
 }

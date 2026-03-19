@@ -1,86 +1,566 @@
+/* ======================================================== */
+/* =================== GLOBAL ============================== */
+/* ======================================================== */
+
 .d100base.sheet.actor,
 .d100base.sheet.item {
-  font-family: sans-serif;
-  padding: 10px;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  padding: 6px;
+  color: #222;
 }
 
-.d100base.sheet.actor h2,
-.d100base.sheet.item h2 {
-  border-bottom: 1px solid #999;
-  margin-top: 10px;
+.d100base.sheet.actor section {
+  border: 1px solid #bbb;
+  padding: 6px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 8px;
+}
+
+/* ================= TITRES ================= */
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  border-bottom: 2px solid #aaa;
   padding-bottom: 4px;
 }
 
-.d100base.sheet.actor label,
-.d100base.sheet.item label {
-  display: block;
-  margin-bottom: 8px;
+/* ======================================================== */
+/* ===================== ACTOR ============================= */
+/* ======================================================== */
+
+.d100base.sheet.actor .window-content {
+  overflow-y: auto;
 }
 
-.d100base.sheet.actor .sheet-body > div,
-.d100base.sheet.item .sheet-body > div {
+/* ================= GRID ================= */
+
+.d100base.sheet.actor .sheet-body.actor-layout {
+
+  display: grid;
+
+  grid-template-columns:
+    max-content
+    minmax(420px, 1fr)
+    minmax(160px, 240px);
+
+  grid-template-rows:
+    min-content
+    min-content
+    minmax(260px, 1fr);
+
+  grid-template-areas:
+    "portrait name injury"
+    "portrait attributes attributes"
+    "inventory inventory inventory";
+
+  gap: 12px;
+
+  min-width: 720px;
+  min-height: 520px;
+}
+
+/* ================= PANELS ================= */
+
+.portrait-panel { grid-area: portrait; }
+.name-panel { grid-area: name; }
+.injury-panel { grid-area: injury; }
+.attributes-panel { grid-area: attributes; }
+.inventory-panel { grid-area: inventory; }
+
+/* ================= PORTRAIT ================= */
+
+.portrait-panel img {
+  width: 180px;
+  border-radius: 6px;
+  border: 1px solid #999;
+}
+
+/* ================= INPUTS ================= */
+
+input, select {
+  border-radius: 4px;
+  border: 1px solid #aaa;
+  padding: 3px 5px;
+  font-size: 12px;
+}
+
+/* ======================================================== */
+/* ================= ATTRIBUTES ============================ */
+/* ======================================================== */
+
+.attributes-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px,1fr));
+  gap: 8px;
+}
+
+.attribute-card {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.03);
+}
+
+.attribute-name {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.attribute-card input {
+  text-align: center;
+}
+
+.attribute-card button {
+  cursor: pointer;
+  border-radius: 4px;
+  background: #eee;
+  border: 1px solid #aaa;
+  font-size: 12px;
+}
+
+.attribute-card button:hover {
+  background: #ddd;
+}
+
+/* ======================================================== */
+/* ================= INVENTORY ============================= */
+/* ======================================================== */
+
+.inventory-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inventory-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inventory-total {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* ================= SCROLL ================= */
+
+.inventory-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ================= LIST ================= */
+
+.inventory-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ======================================================== */
+/* ================= GRID (CRITIQUE) ======================= */
+/* ======================================================== */
+
+.inventory-header,
+.inventory-list .item {
+
+  display: grid;
+
+  grid-template-columns:
+    20px   /* toggle */
+    28px   /* icon */
+    minmax(140px, 1fr) /* name */
+    120px  /* type */
+    60px   /* qty */
+    100px  /* weight */
+    30px   /* extract */
+    30px;  /* delete */
+
+  align-items: center;
+  gap: 6px;
+
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* ======================================================== */
+/* ================= HEADER ================================ */
+/* ======================================================== */
+
+.inventory-header {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+
+  border-bottom: 2px solid #666;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.inventory-header > span {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
 }
 
-.d100base.sheet.actor input[type="number"],
-.d100base.sheet.item input[type="number"] {
-  width: 90px;
+/* Sort */
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
-.d100base.sheet.actor select,
-.d100base.sheet.item select {
-  width: 240px;
-}
-
-.d100base.sheet.actor button {
+.sort-icon {
   margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.6;
 }
 
-.d100base.sheet.item textarea {
+/* ======================================================== */
+/* ================= ITEMS ================================ */
+/* ======================================================== */
+
+.inventory-list .item {
+  padding: 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: 0.15s;
+}
+
+.inventory-list .item:nth-child(even) {
+  background: rgba(0,0,0,0.03);
+}
+
+.inventory-list .item:hover {
+  background: rgba(0,0,0,0.08);
+}
+
+/* ======================================================== */
+/* ================= TREE ================================ */
+/* ======================================================== */
+
+.container-children {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(0,0,0,0.1);
+
   width: 100%;
-  height: 180px;
+  box-sizing: border-box;
 }
 
-.d100base.sheet.item img {
-  border: none;
+.container-children.collapsed {
+  display: none;
+}
+
+/* ======================================================== */
+/* ================= TOGGLE ================================ */
+/* ======================================================== */
+
+.container-toggle,
+.container-spacer {
+  width: 16px;
+  text-align: center;
+}
+
+.container-toggle {
   cursor: pointer;
 }
 
-.d100base.sheet.item .sheet-header {
+.container-toggle:hover {
+  color: #007bff;
+}
+
+/* ======================================================== */
+/* ================= ICON ================================ */
+/* ======================================================== */
+
+.inventory-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  margin: auto;
+  border-radius: 4px;
+}
+
+/* ======================================================== */
+/* ================= TEXT ================================ */
+/* ======================================================== */
+
+.item-name,
+.item-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ======================================================== */
+/* ================= INPUTS ================================ */
+/* ======================================================== */
+
+.item-qty {
+  width: 100%;
+  text-align: center;
+}
+
+/* ======================================================== */
+/* ================= WEIGHT =============================== */
+/* ======================================================== */
+
+.item-weight {
+  text-align: center;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* ======================================================== */
+/* ================= ACTIONS ============================== */
+/* ======================================================== */
+
+.item-delete,
+.item-extract {
   display: flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: 0.15s;
+}
+
+.item:hover .item-delete,
+.item:hover .item-extract {
+  opacity: 1;
+}
+
+.item-delete:hover {
+  color: red;
+}
+
+.item-extract:hover {
+  color: #007bff;
+}
+
+/* ======================================================== */
+/* ================= DRAG & DROP =========================== */
+/* ======================================================== */
+
+.item.dragging {
+  opacity: 0.4;
+}
+
+.item.dragover {
+  background: rgba(0,100,255,0.15);
+}
+
+/* ======================================================== */
+/* ================= ITEM SHEET ============================ */
+/* ======================================================== */
+
+/* ================= HEADER ================= */
+
+.item-header {
+  display: grid;
+  grid-template-columns: 100px 1fr;
   gap: 12px;
+  align-items: start;
 }
 
-.d100base.sheet.item .sheet-header h1 {
-  flex: 1;
+.item-icon {
+  width: 100px;
+  height: 100px;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
-/* Inventaire */
+/* ================= MAIN FIELDS ================= */
 
-.d100base .inventory-list {
-  list-style: none;
-  padding: 0;
+.item-header-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.d100base .inventory-list .item {
+/* ================= SECONDARY FIELDS ================= */
+
+.item-secondary-fields {
+  display: grid;
+  gap: 6px;
+}
+
+/* chaque ligne = grille propre */
+.secondary-row {
+  display: grid;
+
+  grid-template-columns:
+    repeat(auto-fit, minmax(140px, 1fr));
+
+  gap: 8px;
+}
+
+/* ================= LABELS ================= */
+
+.item-secondary-fields label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 6px;
+  font-size: 12px;
+
+  background: rgba(0,0,0,0.03);
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+/* ================= INPUTS ================= */
+
+.item-secondary-fields input,
+.item-secondary-fields select {
+  width: 60px;
+  text-align: center;
+}
+
+/* checkbox (important) */
+.item-secondary-fields input[type="checkbox"] {
+  width: auto;
+}
+
+/* ================= CONTENT LIST ================= */
+
+.default-content-list {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* HEADER */
+
+.default-content-header {
+  display: grid;
+
+  grid-template-columns:
+    minmax(180px, 1fr)
+    140px
+    80px
+    40px;
+
+  gap: 8px;
+
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+
+  border-bottom: 1px solid #aaa;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+/* ROW */
+
+.default-content-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(180px, 1fr)
+    140px
+    80px
+    40px;
+
+  gap: 8px;
+  align-items: center;
+
+  padding: 4px;
+  border-radius: 4px;
+  transition: 0.15s;
+}
+
+.default-content-row:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+/* ================= NAME ================= */
+
+.content-name {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.d100base .inventory-list img {
-  border: none;
+/* ================= QUANTITY ================= */
+
+.content-qty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  flex-wrap: nowrap;
 }
 
-.d100base .item-qty {
-  width: 50px;
+.content-qty button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 11px;
 }
 
-.d100base .item-delete {
-  margin-left: auto;
+.qty-value {
+  min-width: 24px;
+  text-align: center;
+}
+
+/* ================= WEIGHT ================= */
+
+.content-weight {
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ================= DELETE ================= */
+
+.content-delete {
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: 0.15s;
+}
+
+.default-content-row:hover .content-delete {
+  opacity: 1;
+}
+
+.content-delete:hover {
+  color: red;
+}
+
+/* ======================================================== */
+/* ================= RESPONSIVE ============================ */
+/* ======================================================== */
+
+@media(max-width:900px) {
+
+  .d100base.sheet.actor .sheet-body.actor-layout {
+
+    grid-template-columns: 1fr;
+
+    grid-template-areas:
+      "portrait"
+      "name"
+      "injury"
+      "attributes"
+      "inventory";
+  }
 }

@@ -2,10 +2,10 @@
   "id": "d100base",
   "title": "D100 Base",
   "description": "Système d100 minimal pour Foundry VTT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "authors": [
     {
-      "name": "Auteur"
+      "name": "LeFreux"
     }
   ],
   "compatibility": {

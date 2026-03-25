@@ -12,8 +12,8 @@
     "minimum": "12",
     "verified": "12"
   },
-  "manifest": "https://github.com/LeFreux/d100base/releases/latest/download/system.json",
-  "download": "https://github.com/LeFreux/d100base/releases/download/0.2.7/d100base.zip"
+  "manifest": "https://github.com/LeFreux/d100base/releases/tag/v0.2.7/system.json",
+  "download": "https://github.com/LeFreux/d100base/releases/tag/v0.2.7/d100base.zip",
   "esmodules": [
     "d100base.mjs"
   ],

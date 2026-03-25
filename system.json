@@ -13,7 +13,7 @@
     "verified": "12"
   },
   "manifest": "https://raw.githubusercontent.com/LeFreux/d100base/refs/heads/main/system.json",
-  "download": "https://github.com/LeFreux/d100base/releases/download/0.2.7/d100base-0.2.7.zip",
+  "download": "https://github.com/LeFreux/d100base/blob/main/d100base.zip",
   "esmodules": [
     "d100base.mjs"
   ],

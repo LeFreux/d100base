@@ -16,6 +16,14 @@
   border-radius: 8px;
 }
 
+.d100base.sheet.actor .window-header .header-button {
+  color: var(--color-text-primary);
+}
+
+.d100base.sheet.actor .window-header .header-button:hover {
+  color: var(--color-text-highlight);
+}
+
 /* ================= TITRES ================= */
 
 h2 {
@@ -31,19 +39,155 @@ h2 {
 /* ======================================================== */
 
 .d100base.sheet.actor .window-content {
+  overflow: hidden;
+}
+
+/* ================= LAYOUT GLOBAL ================= */
+
+.d100base.sheet.actor .sheet-container {
+  position: relative;
+  height: 100%;
+  padding: 6px 54px 6px 6px;
+  box-sizing: border-box;
+}
+
+/* ================= PAGE PRINCIPALE ================= */
+
+.d100base.sheet.actor .sheet-content {
+  position: relative;
+  height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #aaa;
+  border-radius: 10px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+/* ================= TABS ICONES MODERNES ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs {
+  position: absolute !important;
+  top: 16px;
+  right: 6px;
+  padding: 8px 0;
+
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+
+  width: auto;
+  z-index: 20;
+}
+
+.d100base.sheet.actor .sheet-tabs.tabs::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -8px;
+  right: -8px;
+  background: #ececec;
+  border-radius: 12px;
+  z-index: -1;
+}
+
+/* ================= BOUTONS ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs .item {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+  border: 1px solid #999;
+
+  background-color: rgba(255,255,255,0.95);
+  background: linear-gradient(#e6e6e6, #d2d2d2);
+  background-size: 60%;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* ================= ICONES ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs .tab-main {
+  background-image: url("../assets/icons/icon_BASE_backpack1_empty.svg");
+}
+
+.d100base.sheet.actor .sheet-tabs.tabs .tab-details {
+  background-image: url("../assets/icons/icon_BASE_portrait_empty.svg");
+}
+
+.d100base.sheet.actor .sheet-tabs.tabs .tab-journal {
+  background-image: url("../assets/icons/icon_BASE_book-open_empty.svg");
+}
+
+.d100base.sheet.actor .sheet-tabs.tabs .tab-state {
+  background-image: url("../assets/icons/icon_BASE_token.svg");
+}
+
+/* ================= HOVER ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs .item:hover {
+  transform: scale(1.08);
+  background-color: #ececec;
+}
+
+/* ================= ACTIF ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs .item.active {
+  background-color: #ffffff;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+  transform: scale(1.12);
+}
+
+/* ================= TRANSITIONS ================= */
+
+.d100base.sheet.actor .sheet-tabs.tabs .item {
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+/* ================= TABS CONTENT ================= */
+
+.d100base.sheet.actor .tab {
+  display: none;
+  height: 100%;
+}
+
+.d100base.sheet.actor .tab.active {
+  display: block;
+}
+
+.d100base.sheet.actor .tab textarea {
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.d100base.sheet.actor .tab section + section {
+  margin-top: 12px;
 }
 
 /* ================= GRID ================= */
 
 .d100base.sheet.actor .sheet-body.actor-layout {
-
   display: grid;
 
   grid-template-columns:
-    max-content
-    minmax(420px, 1fr)
-    minmax(160px, 240px);
+    minmax(120px, 20%)
+    1fr
+    auto;
 
   grid-template-rows:
     min-content
@@ -57,7 +201,7 @@ h2 {
 
   gap: 12px;
 
-  min-width: 720px;
+  min-width: 0;
   min-height: 520px;
 }
 
@@ -71,15 +215,64 @@ h2 {
 
 /* ================= PORTRAIT ================= */
 
+.portrait-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.portrait-panel {
+  align-self: start;
+}
+
 .portrait-panel img {
-  width: 180px;
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  aspect-ratio: 3 / 4;
   border-radius: 6px;
   border: 1px solid #999;
 }
 
+.portrait-panel img.portrait-view {
+  object-fit: cover;
+}
+
+.portrait-panel img.token-view {
+  object-fit: contain;
+  background: rgba(0,0,0,0.03);
+}
+
+/* ================= BOUTON SWITCH ================= */
+
+.toggle-portrait {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid #aaa;
+  cursor: pointer;
+  background-color: #ffffff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 70%;
+  background-image: url("../assets/icons/icon_BASE_token.svg");
+}
+
+.toggle-portrait.active {
+  background-image: url("../assets/icons/icon_BASE_portrait_v2.svg");
+  background-color: #e8e8e8;
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.25);
+}
+
+.toggle-portrait:hover {
+  background-color: #f0f0f0;
+}
+
 /* ================= INPUTS ================= */
 
-input, select {
+input,
+select,
+textarea {
   border-radius: 4px;
   border: 1px solid #aaa;
   padding: 3px 5px;
@@ -87,47 +280,108 @@ input, select {
 }
 
 /* ======================================================== */
+/* ============= NAME & INJURY STATE ====================== */
+/* ======================================================== */
+
+.injury-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.injury-panel select {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* ======================================================== */
 /* ================= ATTRIBUTES ============================ */
 /* ======================================================== */
 
 .attributes-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px,1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .attribute-card {
   display: grid;
-  gap: 4px;
-  text-align: center;
-  padding: 6px;
+  grid-template-rows: auto auto auto;
+  justify-items: center;
+
+  gap: 2px;
+  padding: 3px 4px;
+
   border-radius: 6px;
   background: rgba(0,0,0,0.03);
+
+  min-width: 60px;
+}
+
+.attribute-card .attribute-input {
+  padding: 0;
+  box-sizing: border-box;
+  width: 28px;
+  text-align: center;
 }
 
 .attribute-name {
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
 }
 
-.attribute-card input {
+.attribute-input {
+  width: 28px;
+  height: 22px;
+
+  padding: 0;
+  box-sizing: border-box;
+
   text-align: center;
+  line-height: 22px;
+
+  font-size: 11px;
 }
 
-.attribute-card button {
-  cursor: pointer;
-  border-radius: 4px;
-  background: #eee;
+.attribute-input:focus {
+  width: 34px;
+}
+
+.attribute-roll {
+  width: 26px;
+  height: 26px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border-radius: 6px;
   border: 1px solid #aaa;
-  font-size: 12px;
+
+  background-color: #ffffff;
+  background-image: url("../assets/icons/icon_BASE_d100.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 60%;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.attribute-card button:hover {
-  background: #ddd;
+.attribute-roll:hover {
+  background-color: #f0f0f0;
+  filter: none;
+}
+
+.attribute-roll:active {
+  transform: scale(0.95);
 }
 
 /* ======================================================== */
-/* ================= INVENTORY ============================= */
+/* ================= INVENTORY RUNTIME ===================== */
 /* ======================================================== */
 
 .inventory-panel {
@@ -140,6 +394,7 @@ input, select {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   font-size: 18px;
   font-weight: 600;
 }
@@ -147,9 +402,13 @@ input, select {
 .inventory-total {
   font-size: 12px;
   opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ================= SCROLL ================= */
+.inventory-total.overweight {
+  color: #c62828;
+  font-weight: 700;
+}
 
 .inventory-scroll {
   flex: 1;
@@ -158,50 +417,34 @@ input, select {
   overflow-x: hidden;
 }
 
-/* ================= LIST ================= */
-
 .inventory-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-/* ======================================================== */
-/* ================= GRID (CRITIQUE) ======================= */
-/* ======================================================== */
-
+/* Même grille pour l’acteur et la fiche item conteneur */
 .inventory-header,
 .inventory-list .item {
-
   display: grid;
-
   grid-template-columns:
-    20px   /* toggle */
-    28px   /* icon */
-    minmax(140px, 1fr) /* name */
-    120px  /* type */
-    60px   /* qty */
-    100px  /* weight */
-    30px   /* extract */
-    30px;  /* delete */
-
+    minmax(220px, 2fr)
+    minmax(110px, 1fr)
+    clamp(48px, 8%, 80px)
+    clamp(72px, 11%, 120px)
+    24px
+    24px;
   align-items: center;
   gap: 6px;
-
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
-/* ======================================================== */
-/* ================= HEADER ================================ */
-/* ======================================================== */
-
 .inventory-header {
   font-size: 11px;
   font-weight: 600;
   opacity: 0.7;
-
   border-bottom: 2px solid #666;
   padding-bottom: 4px;
   margin-bottom: 6px;
@@ -210,9 +453,8 @@ input, select {
 .inventory-header > span {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
-
-/* Sort */
 
 .sortable {
   cursor: pointer;
@@ -225,15 +467,12 @@ input, select {
   opacity: 0.6;
 }
 
-/* ======================================================== */
-/* ================= ITEMS ================================ */
-/* ======================================================== */
-
 .inventory-list .item {
-  padding: 3px;
+  position: relative;
+  padding: 3px 4px;
   border-radius: 4px;
   font-size: 12px;
-  transition: 0.15s;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .inventory-list .item:nth-child(even) {
@@ -244,15 +483,23 @@ input, select {
   background: rgba(0,0,0,0.08);
 }
 
-/* ======================================================== */
-/* ================= TREE ================================ */
-/* ======================================================== */
+.inventory-list .item.overweight {
+  background: rgba(198,40,40,0.06);
+}
+
+.item-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-left: calc(var(--depth) * 16px);
+}
 
 .container-children {
   margin: 0;
-  padding-left: 12px;
-  border-left: 2px solid rgba(0,0,0,0.1);
-
+  padding-left: 0;
+  border-left: none;
   width: 100%;
   box-sizing: border-box;
 }
@@ -261,79 +508,101 @@ input, select {
   display: none;
 }
 
-/* ======================================================== */
-/* ================= TOGGLE ================================ */
-/* ======================================================== */
+/* Connecteur visuel simple pour les enfants */
+.item-main::before {
+  content: "";
+  position: absolute;
+  left: calc((var(--depth) - 1) * 16px);
+  width: 12px;
+  height: 1px;
+  background: rgba(0,0,0,0.15);
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+}
+
+.item[style*="--depth: 0"] .item-main::before {
+  display: none;
+}
 
 .container-toggle,
 .container-spacer {
   width: 16px;
+  min-width: 16px;
+  flex-shrink: 0;
   text-align: center;
 }
 
 .container-toggle {
   cursor: pointer;
+  user-select: none;
 }
 
 .container-toggle:hover {
   color: #007bff;
 }
 
-/* ======================================================== */
-/* ================= ICON ================================ */
-/* ======================================================== */
-
 .inventory-icon {
   width: 24px;
   height: 24px;
   display: block;
-  margin: auto;
   border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-/* ======================================================== */
-/* ================= TEXT ================================ */
-/* ======================================================== */
-
-.item-name,
-.item-type {
+.inventory-list .item-name,
+.inventory-list .item-type {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  font-size: 11px;
+  opacity: 0.85;
 }
 
-/* ======================================================== */
-/* ================= INPUTS ================================ */
-/* ======================================================== */
+.inventory-list .item-name {
+  flex: 1;
+}
+
+.d100base.sheet.item input.item-name {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+}
 
 .item-qty {
   width: 100%;
+  min-width: 0;
   text-align: center;
 }
-
-/* ======================================================== */
-/* ================= WEIGHT =============================== */
-/* ======================================================== */
 
 .item-weight {
   text-align: center;
   font-weight: 600;
   opacity: 0.85;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ======================================================== */
-/* ================= ACTIONS ============================== */
-/* ======================================================== */
+.item-weight.overweight {
+  color: #c62828;
+}
 
 .item-delete,
-.item-extract {
+.item-extract,
+.item-action-spacer {
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.item-delete,
+.item-extract {
   cursor: pointer;
   opacity: 0.3;
-  transition: 0.15s;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 
 .item:hover .item-delete,
@@ -349,23 +618,318 @@ input, select {
   color: #007bff;
 }
 
-/* ======================================================== */
-/* ================= DRAG & DROP =========================== */
-/* ======================================================== */
-
 .item.dragging {
   opacity: 0.4;
 }
 
-.item.dragover {
+.item.dragover,
+.container-contents-runtime.dragover {
   background: rgba(0,100,255,0.15);
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.empty-container-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0.75;
+  background: rgba(0,0,0,0.03);
+}
+
+/* ======================================================== */
+/* ================= PANEL DETAILS ======================== */
+/* ======================================================== */
+
+.d100base.sheet.actor .details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.d100base.sheet.actor .details-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.d100base.sheet.actor .details-panel .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.details-panel h2 {
+  margin-top: 12px;
+}
+
+.details-panel textarea {
+  min-height: 60px;
+}
+
+/* ======================================================== */
+/* ============ BLESSURES LOCALISÉES / STATE TAB ========== */
+/* ======================================================== */
+
+.d100base.sheet.actor .localized-wounds-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.d100base.sheet.actor .localized-wounds-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.d100base.sheet.actor .localized-wounds-header h2 {
+  margin-bottom: 0;
+}
+
+.d100base.sheet.actor .localized-wounds-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+.d100base.sheet.actor .localized-wounds-layout {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) minmax(260px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.d100base.sheet.actor .localized-wounds-figure-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05));
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.d100base.sheet.actor .localized-wounds-figure {
+  width: min(100%, 110px);
+  min-width: 0;
+}
+
+.d100base.sheet.actor .localized-wounds-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ================= PARTIES DU CORPS ================= */
+
+
+.d100base.sheet.actor .localized-wound-svg-part {
+  cursor: pointer;
+  pointer-events: auto;
+  transition: fill 0.12s ease, stroke 0.12s ease, filter 0.12s ease;
+  stroke: #222;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part:hover {
+  filter: brightness(1.05);
+  stroke: #1b72ff;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part:focus-visible {
+  outline: none;
+  stroke: #1b72ff;
+}
+
+/* ================= COULEURS D'ÉTAT ================= */
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="indemne"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-indemne,
+.d100base.sheet.actor .localized-wounds-status-value.state-indemne {
+  fill: #ffffff;
+  background: #ffffff;
+  color: #222;
+  border-color: #777;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="blesse"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-blesse,
+.d100base.sheet.actor .localized-wounds-status-value.state-blesse {
+  fill: #f4d03f;
+  background: #f4d03f;
+  color: #222;
+  border-color: #c59d00;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="gravement-blesse"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-gravement-blesse,
+.d100base.sheet.actor .localized-wounds-status-value.state-gravement-blesse {
+  fill: #f39c12;
+  background: #f39c12;
+  color: #222;
+  border-color: #b56f00;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="inoperant"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-inoperant,
+.d100base.sheet.actor .localized-wounds-status-value.state-inoperant {
+  fill: #e74c3c;
+  background: #e74c3c;
+  color: #fff;
+  border-color: #aa2e21;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="perdu"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-perdu,
+.d100base.sheet.actor .localized-wounds-status-value.state-perdu {
+  fill: #111111;
+  background: #111111;
+  color: #fff;
+  border-color: #000000;
+}
+
+.d100base.sheet.actor .localized-wound-svg-part[data-state="artificiel"],
+.d100base.sheet.actor .localized-wounds-legend-swatch.state-artificiel,
+.d100base.sheet.actor .localized-wounds-status-value.state-artificiel {
+  fill: #9e9e9e;
+  background: #9e9e9e;
+  color: #111;
+  border-color: #666;
+}
+
+/* ================= COLONNE LATÉRALE ================= */
+
+.d100base.sheet.actor .localized-wounds-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.d100base.sheet.actor .localized-wounds-current,
+.d100base.sheet.actor .localized-wounds-summary {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.d100base.sheet.actor .localized-wounds-current h3,
+.d100base.sheet.actor .localized-wounds-summary h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ================= LÉGENDE ================= */
+
+.d100base.sheet.actor .localized-wounds-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.d100base.sheet.actor .localized-wounds-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.d100base.sheet.actor .localized-wounds-legend-swatch {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: 4px;
+  border: 1px solid #777;
+  box-sizing: border-box;
+}
+
+.d100base.sheet.actor .localized-wounds-legend-label {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* ================= RÉSUMÉ ÉTAT ACTUEL ================= */
+
+.d100base.sheet.actor .localized-wounds-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: grid;
+  gap: 8px;
+}
+
+.d100base.sheet.actor .localized-wounds-status-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.d100base.sheet.actor .localized-wounds-status-part {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.d100base.sheet.actor .localized-wounds-status-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 110px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #777;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* ================= DIALOG DE SÉLECTION ================= */
+
+.d100base .localized-wound-dialog .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.d100base .localized-wound-dialog label {
+  font-weight: 600;
+}
+
+.d100base .localized-wound-dialog select {
+  width: 100%;
 }
 
 /* ======================================================== */
 /* ================= ITEM SHEET ============================ */
 /* ======================================================== */
 
-/* ================= HEADER ================= */
+.d100base.sheet.item .window-content {
+  overflow-y: auto;
+}
+
+.d100base.sheet.item .sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 .item-header {
   display: grid;
@@ -381,47 +945,37 @@ input, select {
   object-fit: cover;
 }
 
-/* ================= MAIN FIELDS ================= */
-
 .item-header-fields {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* ================= SECONDARY FIELDS ================= */
+.item-name {
+  width: 100%;
+}
 
 .item-secondary-fields {
   display: grid;
   gap: 6px;
 }
 
-/* chaque ligne = grille propre */
 .secondary-row {
   display: grid;
-
-  grid-template-columns:
-    repeat(auto-fit, minmax(140px, 1fr));
-
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
 }
-
-/* ================= LABELS ================= */
 
 .item-secondary-fields label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 6px;
   font-size: 12px;
-
   background: rgba(0,0,0,0.03);
   padding: 4px 6px;
   border-radius: 4px;
 }
-
-/* ================= INPUTS ================= */
 
 .item-secondary-fields input,
 .item-secondary-fields select {
@@ -429,138 +983,148 @@ input, select {
   text-align: center;
 }
 
-/* checkbox (important) */
 .item-secondary-fields input[type="checkbox"] {
   width: auto;
 }
 
-/* ================= CONTENT LIST ================= */
-
-.default-content-list {
+.item-properties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
   width: 100%;
-  margin-top: 8px;
 }
 
-/* HEADER */
-
-.default-content-header {
-  display: grid;
-
-  grid-template-columns:
-    minmax(180px, 1fr)
-    140px
-    80px
-    40px;
-
-  gap: 8px;
-
-  font-size: 12px;
-  font-weight: 600;
-  opacity: 0.7;
-
-  border-bottom: 1px solid #aaa;
-  padding-bottom: 4px;
-  margin-bottom: 6px;
+.item-properties label.overweight {
+  border: 1px solid #c62828;
+  background: rgba(198,40,40,0.08);
 }
 
-/* ROW */
-
-.default-content-row {
-  display: grid;
-
-  grid-template-columns:
-    minmax(180px, 1fr)
-    140px
-    80px
-    40px;
-
-  gap: 8px;
-  align-items: center;
-
-  padding: 4px;
-  border-radius: 4px;
-  transition: 0.15s;
-}
-
-.default-content-row:hover {
-  background: rgba(0,0,0,0.05);
-}
-
-/* ================= NAME ================= */
-
-.content-name {
+.container-total-weight {
   display: flex;
   align-items: center;
   gap: 6px;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.03);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ================= QUANTITY ================= */
+.container-total-weight.overweight {
+  color: #c62828;
+  background: rgba(198,40,40,0.08);
+  font-weight: 600;
+}
 
-.content-qty {
+.container-hint {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+  background: rgba(0,0,0,0.03);
+}
+
+.container-contents-runtime {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-
-  flex-wrap: nowrap;
+  flex-direction: column;
+  min-height: 120px;
+  padding: 6px;
+  border: 1px dashed rgba(0,0,0,0.2);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.6);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.content-qty button {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 11px;
+.container-contents-runtime.dragover {
+  border-color: rgba(0,100,255,0.5);
 }
 
-.qty-value {
-  min-width: 24px;
-  text-align: center;
+.d100base.sheet.item .inventory-scroll {
+  max-height: 320px;
 }
 
-/* ================= WEIGHT ================= */
-
-.content-weight {
-  text-align: center;
-  font-weight: 500;
-}
-
-/* ================= DELETE ================= */
-
-.content-delete {
-  display: flex;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0.3;
-  transition: 0.15s;
-}
-
-.default-content-row:hover .content-delete {
-  opacity: 1;
-}
-
-.content-delete:hover {
-  color: red;
+.d100base.sheet.item textarea[name="system.description"] {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  resize: vertical;
 }
 
 /* ======================================================== */
 /* ================= RESPONSIVE ============================ */
 /* ======================================================== */
 
-@media(max-width:900px) {
+@media (max-width: 1000px) {
+  .d100base.sheet.actor .sheet-container {
+    padding-right: 44px;
+  }
 
   .d100base.sheet.actor .sheet-body.actor-layout {
-
     grid-template-columns: 1fr;
-
     grid-template-areas:
       "portrait"
       "name"
       "injury"
       "attributes"
       "inventory";
+  }
+
+  .d100base.sheet.actor .sheet-tabs .item {
+    width: 30px;
+    height: 92px;
+    font-size: 11px;
+  }
+
+  .d100base.sheet.actor .sheet-tabs .item:nth-child(1) { top: 0; }
+  .d100base.sheet.actor .sheet-tabs .item:nth-child(2) { top: 72px; }
+  .d100base.sheet.actor .sheet-tabs .item:nth-child(3) { top: 144px; }
+
+  .d100base.sheet.actor .localized-wounds-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .d100base.sheet.actor .localized-wounds-figure-wrapper {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .item-header {
+    grid-template-columns: 1fr;
+  }
+
+  .item-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .inventory-header,
+  .inventory-list .item {
+    grid-template-columns:
+      minmax(160px, 2fr)
+      minmax(90px, 1fr)
+      56px
+      72px
+      24px
+      24px;
+  }
+
+  .d100base.sheet.actor .details-row {
+    grid-template-columns: 1fr;
+  }
+
+.d100base.sheet.actor .localized-wounds-figure {
+  width: min(100%, 100px);
+}
+
+  .d100base.sheet.actor .localized-wounds-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .d100base.sheet.actor .localized-wounds-status-item {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 }

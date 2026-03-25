@@ -3,9 +3,9 @@ export class D100ItemSheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["d100base", "sheet", "item"],
-      width: 520,
-      height: 560,
-      dragDrop: [{ dropSelector: ".container-default-contents" }]
+      width: 620,
+      height: 620,
+      dragDrop: [{ dropSelector: ".container-contents-runtime" }]
     });
   }
 
@@ -13,37 +13,34 @@ export class D100ItemSheet extends ItemSheet {
     return "systems/d100base/templates/item-sheet.hbs";
   }
 
-  getData() {
+  /* ===================================== */
+  /* HELPERS                               */
+  /* ===================================== */
 
-    const context = super.getData();
+  get actor() {
+    return this.item.parent instanceof Actor ? this.item.parent : null;
+  }
 
-    context.system = this.item.system;
+  get isOwnedItem() {
+    return !!this.actor;
+  }
 
-    /* conteneur : poids du contenu */
+  get isOwnedContainer() {
+    return this.isOwnedItem && !!this.item.system?.isContainer;
+  }
 
-    const contents = this.item.system.defaultContents ?? [];
-
-    const contentWeight = contents.reduce((sum, c) => {
-      return sum + (c.weight ?? 0);
-    }, 0);
-
-	const emptyWeight = this.item.system.emptyWeight ?? 0;
-
-	context.contentWeight = contentWeight;
-	context.totalWeight = this.item.system.weight ?? 0;
-	context.emptyWeight = emptyWeight;
-
-    /* catégories */
-
-    context.categories = [
+  _getCategories() {
+    return [
       { value: "Arme", label: "Arme" },
       { value: "Artisanal", label: "Artisanal" },
       { value: "Conteneur", label: "Conteneur" },
       { value: "Divers", label: "Divers" },
+      { value: "Drogue", label: "Drogue" },
       { value: "Électronique", label: "Électronique" },
       { value: "Livre", label: "Livre" },
       { value: "Loisir", label: "Loisir" },
       { value: "Lumière", label: "Lumière" },
+      { value: "Matériel", label: "Matériel" },
       { value: "Munition", label: "Munition" },
       { value: "Médical", label: "Médical" },
       { value: "Nourriture", label: "Nourriture" },
@@ -52,414 +49,469 @@ export class D100ItemSheet extends ItemSheet {
       { value: "Quincaillerie", label: "Quincaillerie" },
       { value: "Vêtement", label: "Vêtement" }
     ];
+  }
+
+  _roundWeight(value) {
+    return Math.round((Number(value) || 0) * 100) / 100;
+  }
+
+  /**
+   * Retourne un aperçu de poids pour les items non possédés.
+   * Pour les conteneurs possédés, le vrai poids vient de l’acteur.
+   */
+  _getStandaloneWeightState() {
+    const system = this.item.system;
+	const quantity = system.isContainer
+	  ? 1
+	  : Math.max(0, Number(system.quantity ?? 1));
+    const unitWeight = Math.max(0, Number(system.unitWeight ?? 0));
+    const emptyWeight = Math.max(0, Number(system.emptyWeight ?? 0));
+    const capacityWeight = Math.max(0, Number(system.capacityWeight ?? 0));
+
+    if (!system.isContainer) {
+      return {
+        contentWeight: 0,
+        totalWeight: this._roundWeight(unitWeight * quantity),
+        emptyWeight: 0,
+        capacityWeight,
+        overweight: false
+      };
+    }
+
+    return {
+      contentWeight: 0,
+      totalWeight: this._roundWeight(emptyWeight * quantity),
+      emptyWeight: this._roundWeight(emptyWeight),
+      capacityWeight: this._roundWeight(capacityWeight),
+      overweight: false
+    };
+  }
+
+  /**
+   * Retourne un état runtime complet pour un conteneur possédé.
+   */
+  _getOwnedContainerState() {
+    if (!this.isOwnedContainer) {
+      return this._getStandaloneWeightState();
+    }
+
+    return this.actor.getContainerState(this.item.id);
+  }
+
+  /**
+   * Retourne l’arbre réel du contenu d’un conteneur possédé.
+   */
+  _getOwnedContainerTree() {
+    if (!this.isOwnedContainer) return [];
+    return this.actor.getContainerTree(this.item.id);
+  }
+
+  _getItemIdFromEventTarget(target) {
+    return target?.closest?.(".item")?.dataset?.itemId ?? null;
+  }
+
+  _getDragTransfer(event) {
+    return event.originalEvent?.dataTransfer || event.dataTransfer || null;
+  }
+
+  _getDraggedItemIdFromEvent(event) {
+    const dt = this._getDragTransfer(event);
+    if (!dt) return null;
+
+    const plain = dt.getData("text/plain");
+    if (plain) return plain;
+
+    return null;
+  }
+
+  _getTargetItemFromDropEvent(event) {
+    const targetLi = event.currentTarget?.closest?.(".item") || event.currentTarget;
+    const targetId = targetLi?.dataset?.itemId;
+    if (!targetId || !this.actor) return null;
+
+    return this.actor.getInventoryItem(targetId);
+  }
+
+  /**
+   * Détermine le conteneur cible :
+   * - drop sur le fond de la vue conteneur => ce conteneur
+   * - drop sur un conteneur enfant => ce conteneur enfant
+   * - drop sur un item simple => même conteneur que cet item
+   */
+  _resolveDropTargetContainerId(targetItem = null) {
+    if (!this.isOwnedContainer) return null;
+
+    if (!targetItem) {
+      return this.item.id;
+    }
+
+    if (targetItem.system?.isContainer) {
+      return targetItem.id;
+    }
+
+    return this.actor.getEffectiveContainerId(targetItem);
+  }
+
+  /**
+   * Fusion simple conservée côté UI pour cohérence avec actor-sheet.
+   */
+  async _tryStackItems(draggedItem, targetItem) {
+    if (!draggedItem || !targetItem) return false;
+    if (draggedItem.system?.isContainer) return false;
+    if (targetItem.system?.isContainer) return false;
+
+    const draggedKey = `${draggedItem.name}::${draggedItem.system?.category ?? ""}`;
+    const targetKey = `${targetItem.name}::${targetItem.system?.category ?? ""}`;
+
+    if (draggedKey !== targetKey) return false;
+
+    const newQty =
+      Number(targetItem.system?.quantity ?? 0) +
+      Number(draggedItem.system?.quantity ?? 0);
+
+    await this.actor.updateInventoryItemQuantity(targetItem.id, newQty);
+    await this.actor.deleteInventoryItem(draggedItem.id);
+
+    return true;
+  }
+
+  async _handleRuntimeContainerDrop(event) {
+    if (!this.isOwnedContainer) return;
+
+    event.preventDefault();
+
+    const draggedId = this._getDraggedItemIdFromEvent(event);
+    let draggedItem = draggedId ? this.actor.getInventoryItem(draggedId) : null;
+
+    /**
+     * Support minimal de drop Foundry standard.
+     * On n’accepte ici que les items déjà possédés par ce même acteur.
+     */
+    if (!draggedItem) {
+      const data = TextEditor.getDragEventData(event);
+      if (data?.type === "Item") {
+        const droppedItem = await Item.fromDropData(data);
+        if (droppedItem?.parent?.id === this.actor.id) {
+          draggedItem = droppedItem;
+        }
+      }
+    }
+
+    if (!draggedItem) return;
+    if (draggedItem.id === this.item.id) return;
+
+    const targetItem = this._getTargetItemFromDropEvent(event);
+
+    if (targetItem && draggedItem.id === targetItem.id) return;
+
+	const targetContainerId = this._resolveDropTargetContainerId(targetItem);
+
+	await this.actor.tryStackOrMoveItem(
+	  draggedItem.id,
+	  targetItem?.id ?? null,
+	  targetContainerId
+	);
+  }
+
+  /* ===================================== */
+  /* DATA                                  */
+  /* ===================================== */
+
+  getData() {
+    const context = super.getData();
+
+    context.system = this.item.system;
+    context.categories = this._getCategories();
+
+    context.isOwnedItem = this.isOwnedItem;
+    context.isOwnedContainer = this.isOwnedContainer;
+
+    const weightState = this.isOwnedContainer
+      ? this._getOwnedContainerState()
+      : this._getStandaloneWeightState();
+
+    context.contentWeight = weightState.contentWeight;
+    context.totalWeight = weightState.totalWeight;
+    context.emptyWeight = weightState.emptyWeight;
+    context.capacityWeight = weightState.capacityWeight;
+    context.overweight = weightState.overweight;
+
+    /**
+     * Vue runtime réelle du contenu.
+     * Utilisée par la future version de item-sheet.hbs.
+     */
+    context.containerTree = this._getOwnedContainerTree();
 
     return context;
   }
 
-  /* calcul  du poids */
+  /* ===================================== */
+  /* POIDS LOCAL (ITEM NON CONTENEUR / NON POSSEDÉ) */
+  /* ===================================== */
 
-  async _recalculateWeight() {
-
+  /**
+   * Recalcul local simple.
+   * - item simple : unitWeight * quantity
+   * - conteneur non possédé : emptyWeight * quantity
+   *
+   * Le poids réel d’un conteneur possédé vient de actor.mjs.
+   */
+  async _recalculateWeightFromForm(html) {
     const system = this.item.system;
-
-    /* objet normal */
+    const quantity = system.isContainer
+      ? 1
+      : Math.max(0, Number(html.find('input[name="system.quantity"]').val()) || 0);
 
     if (!system.isContainer) {
+      const unitWeight = Math.max(0, Number(html.find('input[name="system.unitWeight"]').val()) || 0);
+      const totalWeight = this._roundWeight(unitWeight * quantity);
 
-      const quantity = system.quantity ?? 0;
-      const unitWeight = system.unitWeight ?? 0;
-
-      const totalWeight = quantity * unitWeight;
-
-      if (system.weight !== totalWeight) {
-
-        await this.item.update({
-          "system.weight": totalWeight
-        });
-
-      }
-
+      await this.item.update({
+        "system.quantity": quantity,
+        "system.unitWeight": unitWeight,
+        "system.weight": totalWeight
+      });
       return;
     }
 
-	/* conteneur */
+    const emptyWeight = Math.max(0, Number(html.find('input[name="system.emptyWeight"]').val()) || 0);
 
-	const contents = system.defaultContents ?? [];
+    /**
+     * Pour un conteneur possédé, le poids total sera recalculé côté acteur.
+     * Ici on met seulement à jour les champs directement édités.
+     */
+    if (this.isOwnedContainer) {
+      await this.item.update({
+        "system.quantity": 1,
+        "system.emptyWeight": emptyWeight,
+        "system.unitWeight": this._roundWeight(emptyWeight)
+      });
+      return;
+    }
 
-	const contentWeight = contents.reduce((sum, c) => {
-	  return sum + (c.weight ?? 0);
-	}, 0);
+    const totalWeight = this._roundWeight(emptyWeight);
 
-	const emptyWeight = system.emptyWeight ?? 0;
-
-	const newUnitWeight = emptyWeight + contentWeight;
-
-	const quantity = system.quantity ?? 1;
-
-	const totalWeight = newUnitWeight * quantity;
-
-	/* mise à jour poids unitaire et total */
-
-	if (system.unitWeight !== newUnitWeight || system.weight !== totalWeight) {
-	  await this.item.update({
-		"system.unitWeight": newUnitWeight,
-		"system.weight": totalWeight
-	  });
-	}
-
+    await this.item.update({
+      "system.quantity": 1,
+      "system.emptyWeight": emptyWeight,
+      "system.unitWeight": this._roundWeight(emptyWeight),
+      "system.weight": totalWeight
+    });
   }
 
-
-  async _recalculateWeightFromForm(html) {
-	const isContainer = this.item.system.isContainer;
-
-	const quantity = Number(html.find('input[name="system.quantity"]').val()) || 0;
-
-	if (!isContainer) {
-	  const unitWeight = Number(html.find('input[name="system.unitWeight"]').val()) || 0;
-	  const totalWeight = unitWeight * quantity;
-
-	  await this.item.update({
-	    "system.weight": totalWeight
-	  });
-	  return;
-	}
-
-	const emptyWeight = Number(html.find('input[name="system.emptyWeight"]').val()) || 0;
-	const contents = this.item.system.defaultContents ?? [];
-
-	const contentWeight = contents.reduce((sum, c) => sum + (c.weight ?? 0), 0);
-	const newUnitWeight = emptyWeight + contentWeight;
-	const totalWeight = newUnitWeight * quantity;
-
-	await this.item.update({
-	  "system.emptyWeight": emptyWeight,
-	  "system.unitWeight": newUnitWeight,
-	  "system.weight": totalWeight
-	});
-	
-  }
-
+  /* ===================================== */
+  /* LISTENERS                             */
+  /* ===================================== */
 
   activateListeners(html) {
-
     super.activateListeners(html);
 
-    /* recalcul poids objet */
-
-	html.find('input[name="system.quantity"], input[name="system.unitWeight"], input[name="system.emptyWeight"]').change(async () => {
-	  await this._recalculateWeightFromForm(html);
-	});
-
-    /* supprimer contenu */
-
-    html.find(".remove-default-content").click(async ev => {
-
-      const row = ev.currentTarget.closest(".default-content-row");
-      const index = Number(row.dataset.index);
-
-      const contents = [...this.item.system.defaultContents];
-
-      contents.splice(index, 1);
-
-      await this.item.update({
-        "system.defaultContents": contents
-      });
-
-      await this._recalculateWeight();
-
+    /**
+     * Champs principaux de l’item.
+     * On garde le recalcul local simple, sans aucune logique defaultContents.
+     */
+    html.find('input[name="system.quantity"], input[name="system.unitWeight"], input[name="system.emptyWeight"]').change(async () => {
+      await this._recalculateWeightFromForm(html);
     });
 
-    /* Modification de la quantité  */
-
-    html.find(".qty-minus, .qty-plus, .qty-minus5, .qty-plus5").click(async ev => {
-
-      const row = ev.currentTarget.closest(".default-content-row");
-      const index = Number(row.dataset.index);
-
-      const contents = duplicate(this.item.system.defaultContents);
-      const entry = contents[index];
-
-      let delta = 0;
-
-      if (ev.currentTarget.classList.contains("qty-minus")) delta = -1;
-      if (ev.currentTarget.classList.contains("qty-plus")) delta = 1;
-      if (ev.currentTarget.classList.contains("qty-minus5")) delta = -5;
-      if (ev.currentTarget.classList.contains("qty-plus5")) delta = 5;
-
-      entry.quantity = Math.max(0, entry.quantity + delta);
-
-      entry.weight = entry.unitWeight * entry.quantity;
-
-      await this.item.update({
-        "system.defaultContents": contents
-      });
-
-      await this._recalculateWeight();
-
-    });
-
-    /* Ouvrir fiche item en lecture seule */
-
-    html.find(".item-open").dblclick(async ev => {
-
-      const index = Number(ev.currentTarget.dataset.index);
-      const content = this.item.system.defaultContents[index];
-
-      if (!content?.uuid) return;
-
-      const item = await fromUuid(content.uuid);
-
-      if (!item) return;
-
-      const sheet = item.sheet;
-
-      sheet.render(true);
-
-      Hooks.once("render" + sheet.constructor.name, (app, html) => {
-
-        if (app.object.id !== item.id) return;
-
-        html.find("input, select, textarea, button").prop("disabled", true);
-
-      });
-
-    });
-	
-	/* Décochage du conteneur et destruction du contenu */
-	
+    /**
+     * Décochage du statut conteneur :
+     * - si l’item n’est pas possédé, changement direct
+     * - si l’item est possédé et contient encore des items, confirmation
+     *   puis extraction préalable de tous les enfants pour éviter toute incohérence
+     */
 	html.find('input[name="system.isContainer"]').change(async ev => {
-
 	  const checked = ev.currentTarget.checked;
 
-	  /* activation conteneur */
-
 	  if (checked) {
-
 		await this.item.update({
-		  "system.isContainer": true
+		  "system.isContainer": true,
+		  "system.quantity": 1
 		});
-
-		await this._recalculateWeight();
+		await this._recalculateWeightFromForm(html);
 		return;
-
 	  }
 
-	  /* désactivation conteneur */
-
-	  const contents = this.item.system.defaultContents ?? [];
-
-	  if (contents.length === 0) {
-
-		await this.item.update({
-		  "system.isContainer": false
-		});
-
-		await this._recalculateWeight();
+	  if (!this.isOwnedContainer) {
+		await this.item.update({ "system.isContainer": false });
 		return;
-
 	  }
 
-	  const confirmed = await Dialog.confirm({
-		title: "Retirer le statut de conteneur",
-		content: "<p>Cet objet contient des éléments. Les supprimer ?</p>"
-	  });
+      const children = this.actor.getContainerChildren(this.item.id);
 
-	  if (!confirmed) {
+      if (children.length === 0) {
+        await this.item.update({ "system.isContainer": false });
+        return;
+      }
 
-		/* on restaure la valeur */
+      const confirmed = await Dialog.confirm({
+        title: "Retirer le statut de conteneur",
+        content: "<p>Cet objet contient encore des éléments. Ils seront sortis du conteneur avant de retirer ce statut.</p>"
+      });
 
-		ev.preventDefault();
+      if (!confirmed) {
+        ev.preventDefault();
+        this.render(true);
+        return;
+      }
 
-		this.render(true);
+      for (const child of children) {
+        await this.actor.extractItemFromContainer(child.id);
+      }
 
-		return;
+      await this.item.update({ "system.isContainer": false });
+    });
 
+    if (!this.isEditable) return;
+
+    /**
+     * Double-clic sur une ligne runtime : ouvre la vraie fiche item.
+     */
+    html.find(".inventory-list .item").dblclick(ev => {
+      const id = ev.currentTarget.dataset.itemId;
+      if (!id || !this.actor) return;
+
+      const item = this.actor.getInventoryItem(id);
+      if (item) item.sheet.render(true);
+    });
+
+    /**
+     * Toggle ouverture d’un sous-conteneur dans la vue runtime.
+     */
+    html.find(".container-toggle").click(async ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (!this.actor) return;
+
+      const id = ev.currentTarget.dataset.containerId;
+      if (!id) return;
+
+      await this.actor.toggleContainerExpanded(id);
+    });
+
+    /**
+     * Modification de quantité d’un enfant réel.
+     */
+    html.find(".item-qty").change(async ev => {
+	  if (!this.actor) return;
+
+	  const id = this._getItemIdFromEventTarget(ev.currentTarget);
+	  if (!id) return;
+
+	  const value = Math.max(0, Math.floor(Number(ev.currentTarget.value) || 0));
+	  await this.actor.updateInventoryItemQuantity(id, value);
+
+	  const item = this.actor.getInventoryItem(id);
+	  if (item?.system?.isContainer) {
+		ev.currentTarget.value = 1;
 	  }
-
-	  await this.item.update({
-		"system.isContainer": false,
-		"system.defaultContents": []
-	  });
-
-	  await this._recalculateWeight();
-
 	});
 
-	/* Gestion du drag */
-	
-	html.find(".default-content-row").on("dragstart", ev => {
+    /**
+     * Suppression d’un enfant réel.
+     */
+    html.find(".item-delete").click(async ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
 
-	  const index = Number(ev.currentTarget.dataset.index);
-	  const content = this.item.system.defaultContents[index];
+      if (!this.actor) return;
 
-	  if (!content?.sourceId) return;
+      const id = ev.currentTarget.dataset.itemId;
+      if (!id) return;
 
-	  ev.originalEvent.dataTransfer.setData("text/plain", JSON.stringify({
-		type: "Item",
-		uuid: content.sourceId,
-		containerId: this.item.id,
-		index: index
-	  }));
+      await this.actor.deleteInventoryItem(id);
+    });
 
+    /**
+     * Sortie d’un enfant réel du conteneur.
+     */
+    html.find(".item-extract").click(async ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (!this.actor) return;
+
+      const id = ev.currentTarget.dataset.itemId;
+      if (!id) return;
+
+      await this.actor.extractItemFromContainer(id);
+    });
+
+    /**
+     * Drag start sur une ligne runtime.
+     */
+    html.find(".drag-handle").on("dragstart", ev => {
+      const dt = this._getDragTransfer(ev);
+      if (!dt) return;
+
+      const itemId = ev.currentTarget.dataset.itemId;
+      if (!itemId) return;
+
+      dt.setData("text/plain", itemId);
+
+      const li = ev.currentTarget.closest(".item");
+      li?.classList.add("dragging");
+    });
+
+	html.find(".drag-handle").on("dragend", ev => {
+	  const li = ev.currentTarget.closest(".item");
+	  li?.classList.remove("dragging");
+
+	  html.find(".inventory-list .item.dragover").removeClass("dragover");
+	  html.find(".container-contents-runtime.dragover").removeClass("dragover");
 	});
 
+    /**
+     * Drag over / leave sur les lignes runtime.
+     */
+	html.find(".inventory-list .item").on("dragover", ev => {
+	  ev.preventDefault();
+	  ev.currentTarget.classList.add("dragover");
+	});
+
+	html.find(".inventory-list .item").on("dragleave", ev => {
+	  ev.currentTarget.classList.remove("dragover");
+	});
+
+	html.find(".inventory-list .item").on("drop", async ev => {
+	  ev.currentTarget.classList.remove("dragover");
+	  await this._handleRuntimeContainerDrop(ev);
+	});
+
+    /**
+     * Drop sur le fond de la vue de contenu :
+     * ajoute directement dans le conteneur actuellement ouvert.
+     */
+    html.find(".container-contents-runtime").on("dragover", ev => {
+      ev.preventDefault();
+      ev.currentTarget.classList.add("dragover");
+    });
+
+    html.find(".container-contents-runtime").on("dragleave", ev => {
+      ev.currentTarget.classList.remove("dragover");
+    });
+
+    html.find(".container-contents-runtime").on("drop", async ev => {
+      ev.currentTarget.classList.remove("dragover");
+      await this._handleRuntimeContainerDrop(ev);
+    });
   }
+
+  /* ===================================== */
+  /* DROP                                  */
+  /* ===================================== */
 
   async _onDrop(event) {
+    /**
+     * On redirige le drop global vers la logique runtime,
+     * mais seulement pour un conteneur possédé.
+     */
+    if (this.isOwnedContainer) {
+      await this._handleRuntimeContainerDrop(event);
+      return;
+    }
 
-	const data = TextEditor.getDragEventData(event);
-
-	if (data.type !== "Item") return;
-
-	/* vérifie que la destination est un conteneur */
-
-	if (!this.item.system.isContainer) {
-
-	  ui.notifications.warn(
-		"Cet objet n'est pas un conteneur."
-	  );
-
-	  return;
-	  
-	}
-
-	/* récupérer l'objet droppé */
-
-	const droppedItem = await Item.fromDropData(data);
-
-	if (!droppedItem) return;
-
-	/* sécu : anti self drop */
-
-	if (droppedItem.uuid === this.item.uuid || droppedItem.parent?.uuid === this.item.uuid) {
-
-	  ui.notifications.warn(
-		"Impossible de placer ce conteneur ici."
-	  );
-
-	  return;
-
-	}
-
-	/* copie du contenu */
-
-	const contents = foundry.utils.deepClone(
-	  this.item.system.defaultContents ?? []
-	);
-
-	const qty = droppedItem.system.quantity ?? 1;
-	const weight = droppedItem.system.weight ?? 0;
-	const unitWeight = qty > 0 ? weight / qty : 0;
-
-	/* poids actuel du contenu */
-
-	const currentWeight = contents.reduce((sum, c) => {
-	  return sum + (c.weight ?? 0);
-	}, 0);
-
-	/* capacité maximale */
-
-	const capacity = this.item.system.capacityWeight ?? 0;
-
-	/* correction du test de capacité */
-
-	const futureWeight = currentWeight + weight;
-
-	if (capacity > 0 && futureWeight > capacity) {
-
-	  ui.notifications.warn(
-		"Ce conteneur ne peut pas contenir cet objet (capacité dépassée)."
-	  );
-
-	  return;
-
-	}
-
-	/* fusion des objets identiques */
-
-	const existing = contents.find(c =>
-	  c.sourceId === droppedItem.uuid
-	);
-
-	if (existing) {
-
-	  existing.quantity += qty;
-	  existing.weight = existing.unitWeight * existing.quantity;
-
-	} else {
-
-	  contents.push({
-		name: droppedItem.name,
-		quantity: qty,
-		weight: weight,
-		unitWeight: unitWeight,
-		category: droppedItem.system.category ?? "",
-		img: droppedItem.img ?? "icons/svg/item-bag.svg",
-		uuid: droppedItem.uuid,
-		sourceId: droppedItem.uuid
-	  });
-
-	}
-
-	/* mise à jour conteneur destination */
-
-	await this.item.update({
-	  "system.defaultContents": contents
-	});
-
-	await this._recalculateWeight();
-
-	/* supprimer du conteneur source si drag interne */
-
-	if (data.uuid) {
-
-	  const sourceContainers = game.items.filter(i =>
-		i.system?.defaultContents?.some(c => c.sourceId === data.uuid)
-	  );
-
-	  for (const container of sourceContainers) {
-
-		if (container.id === this.item.id) continue;
-
-		const sourceContents = foundry.utils.deepClone(
-		  container.system.defaultContents ?? []
-		);
-
-		const index = sourceContents.findIndex(c =>
-		  c.sourceId === data.uuid
-		);
-
-		if (index !== -1) {
-
-		  const entry = sourceContents[index];
-
-		  if (entry.quantity > 1) {
-
-			entry.quantity -= 1;
-			entry.weight = entry.unitWeight * entry.quantity;
-
-		  } else {
-
-			sourceContents.splice(index, 1);
-
-		  }
-
-		  await container.update({
-			"system.defaultContents": sourceContents
-		  });
-
-		  if (container.sheet?.rendered) {
-			await container.sheet._recalculateWeight();
-		  }
-
-		}
-
-	  }
-
-	}
-
+    return super._onDrop(event);
   }
-
-
 }

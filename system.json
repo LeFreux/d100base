@@ -2,7 +2,7 @@
   "id": "d100base",
   "title": "D100 Base",
   "description": "Système d100 minimal pour Foundry VTT",
-  "version": "0.2.0",
+  "version": "0.2.7",
   "authors": [
     {
       "name": "LeFreux"
@@ -13,7 +13,7 @@
     "verified": "12"
   },
   "manifest": "https://raw.githubusercontent.com/LeFreux/d100base/refs/heads/main/system.json",
-  "download": "https://github.com/LeFreux/d100base/releases/download/v0.2.0/d100base-0.2.0.zip",
+  "download": "https://github.com/LeFreux/d100base/releases/download/0.2.7/d100base-0.2.7.zip",
   "esmodules": [
     "d100base.mjs"
   ],

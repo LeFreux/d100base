@@ -1,130 +1,242 @@
-<form class="sheet-body actor-layout">
+<form class="sheet-container">
 
-  <!-- ================= PORTRAIT ================= -->
-  <section class="portrait-panel">
-    <h2>Portrait</h2>
-    <img src="{{actor.img}}" data-edit="img" alt="{{actor.name}}">
-  </section>
+  <!-- ================= TABS ================= -->
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item tab-main active" data-tab="main" title="Principal"></a>
+    <a class="item tab-details" data-tab="details" title="Profil"></a>
+    <a class="item tab-journal" data-tab="journal" title="Notes"></a>
+    <a class="item tab-state" data-tab="state" title="État & Équipement"></a>
+  </nav>
 
+  <!-- ================= CONTENT ================= -->
+  <section class="sheet-content">
 
-  <!-- ================= NOM ================= -->
-  <section class="name-panel">
-    <label>Nom</label>
-    <input type="text" name="name" value="{{actor.name}}">
-  </section>
+    <!-- ================= MAIN ================= -->
+    <div class="tab active" data-group="primary" data-tab="main">
 
+      <div class="sheet-body actor-layout">
 
-  <!-- ================= ETAT ================= -->
-  <section class="injury-panel">
-    <label>État</label>
+        <!-- ================= PORTRAIT ================= -->
+        <section class="portrait-panel">
 
-    <select name="system.injuryState">
-      <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
-      <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
-      <option value="modererement-blesse" {{#if (eq system.injuryState "modererement-blesse")}}selected{{/if}}>Modérément blessé</option>
-      <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
-      <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
-      <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
-    </select>
-  </section>
+          <h2 class="portrait-header">
+            {{#if showToken}}Token{{else}}Portrait{{/if}}
 
+            <button
+              type="button"
+              class="toggle-portrait {{#if showToken}}active{{/if}}"
+              title="Basculer Portrait / Token"
+            ></button>
+          </h2>
 
-  <!-- ================= CARACTERISTIQUES ================= -->
-  <section class="attributes-panel">
+          <img
+            class="{{#if showToken}}token-view{{else}}portrait-view{{/if}}"
+            src="{{#if showToken}}{{tokenImg}}{{else}}{{actor.img}}{{/if}}"
+            {{#unless showToken}}data-edit="img"{{/unless}}
+            alt="{{actor.name}}"
+          />
 
-    <h2>Caractéristiques</h2>
+        </section>
 
-    <div class="attributes-row">
+        <!-- ================= NOM ================= -->
+        <section class="name-panel">
+          <label>Nom</label>
+          <input type="text" name="name" value="{{actor.name}}">
+        </section>
 
-      {{#each system.attributes}}
+        <!-- ================= ETAT GENERAL ================= -->
+        <section class="injury-panel">
+          <label>État général</label>
+          <select name="system.injuryState">
+            <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
+            <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
+            <option value="blesse" {{#if (eq system.injuryState "blesse")}}selected{{/if}}>Blessé</option>
+            <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
+            <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
+            <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
+          </select>
+        </section>
 
-      <div class="attribute-card">
+        <!-- ================= ATTRIBUTS ================= -->
+        <section class="attributes-panel">
+          <h2>Caractéristiques</h2>
 
-        <span class="attribute-name">
-          {{localize (concat "D100BASE.Attributes." @key)}}
-        </span>
+          <div class="attributes-row">
+            {{#each system.attributes}}
+              <div class="attribute-card">
 
-        <input
-          type="number"
-          name="system.attributes.{{@key}}"
-          value="{{this}}"
-          min="0"
-          max="100">
+                <span
+                  class="attribute-name"
+                  title="{{localize (concat "D100BASE.Attributes." @key)}}"
+                >
+                  {{lookup ../config.attributesShort @key}}
+                </span>
 
-        <button
-          type="button"
-          data-roll="{{@key}}">
-          Jet
-        </button>
+                <input
+                  class="attribute-input"
+                  type="number"
+                  name="system.attributes.{{@key}}"
+                  value="{{this}}"
+                  min="0"
+                  max="999">
+
+                <button
+                  class="attribute-roll"
+                  type="button"
+                  data-roll="{{@key}}"
+                  title="Jet {{localize (concat "D100BASE.Attributes." @key)}}"
+                ></button>
+
+              </div>
+            {{/each}}
+          </div>
+        </section>
+
+        <!-- ================= INVENTAIRE ================= -->
+        <section class="inventory-panel">
+
+          <h2 class="inventory-title">
+            <span>Inventaire</span>
+            <span class="inventory-total {{#if system.overburdened}}overweight{{/if}}">
+              {{formatNumberClean system.totalWeight}} / {{formatNumberClean system.capacity}} kg
+            </span>
+          </h2>
+
+          <div class="inventory-scroll">
+
+            <ul class="inventory-list">
+
+              <li class="inventory-header">
+                <span class="sortable" data-sort="name">
+                  Nom <span class="sort-icon">{{sortState.icons.name}}</span>
+                </span>
+                <span class="sortable" data-sort="type">
+                  Type <span class="sort-icon">{{sortState.icons.type}}</span>
+                </span>
+                <span class="sortable" data-sort="quantity">
+                  Qté <span class="sort-icon">{{sortState.icons.quantity}}</span>
+                </span>
+                <span class="sortable" data-sort="weight">
+                  Poids (kg) <span class="sort-icon">{{sortState.icons.weight}}</span>
+                </span>
+                <span></span>
+                <span></span>
+              </li>
+
+              {{#if inventoryTree.length}}
+                {{#each inventoryTree}}
+                  {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
+                {{/each}}
+              {{else}}
+                <li class="empty-container-row">
+                  <span>Aucun objet dans l’inventaire.</span>
+                </li>
+              {{/if}}
+
+            </ul>
+
+          </div>
+
+        </section>
 
       </div>
+    </div>
 
-      {{/each}}
+    <!-- ================= DETAILS ================= -->
+    <div class="tab" data-group="primary" data-tab="details">
+
+      <section class="details-panel">
+        <h2>Profil</h2>
+
+        <div class="details-row">
+          <div class="field">
+            <label>Âge</label>
+            <input type="number" name="system.details.age" value="{{system.details.age}}">
+          </div>
+
+          <div class="field">
+            <label>Taille</label>
+            <input type="number" name="system.details.height" value="{{system.details.height}}">
+          </div>
+
+          <div class="field">
+            <label>Poids</label>
+            <input type="number" name="system.details.weight" value="{{system.details.weight}}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Traits</label>
+          <textarea name="system.details.traits" rows="3">{{system.details.traits}}</textarea>
+        </div>
+
+        <h2>Historique</h2>
+
+        <div class="field">
+          <label>Aptitudes</label>
+          <textarea name="system.details.aptitude" rows="4">{{system.details.aptitude}}</textarea>
+        </div>
+
+        <div class="field">
+          <label>Blessures</label>
+          <textarea name="system.details.blessures" rows="3">{{system.details.blessures}}</textarea>
+        </div>
+
+        <div class="field">
+          <label>Biographie</label>
+          <textarea name="system.details.biographie" rows="6">{{system.details.biographie}}</textarea>
+        </div>
+
+      </section>
 
     </div>
 
-  </section>
+    <!-- ================= JOURNAL ================= -->
+    <div class="tab" data-group="primary" data-tab="journal">
 
+      <section>
+        <h2>PNJ rencontrés</h2>
+        <textarea name="system.journal.npcs" rows="7">{{system.journal.npcs}}</textarea>
+      </section>
 
-  <!-- ================= INVENTAIRE ================= -->
-  <section class="inventory-panel">
+      <section>
+        <h2>Factions</h2>
+        <textarea name="system.journal.factions" rows="5">{{system.journal.factions}}</textarea>
+      </section>
 
-    <h2 class="inventory-title">
-      Inventaire
-      <span class="inventory-total">
-        {{formatNumberClean system.totalWeight}} kg
-      </span>
-    </h2>
+      <section>
+        <h2>Notes personnelles</h2>
+        <textarea name="system.journal.notes" rows="10">{{system.journal.notes}}</textarea>
+      </section>
 
-	<div class="inventory-scroll">
+    </div>
 
-	  <ul class="inventory-list">
+    <!-- ================= STATE ================= -->
+    <div class="tab" data-group="primary" data-tab="state">
 
-		<!-- HEADER -->
-		<li class="inventory-header">
+      <section>
+        <h2>Équipement</h2>
+        <textarea
+          name="system.state.equipment"
+          rows="6"
+          placeholder="Notes d’équipement porté, protections, armes équipées, sac, etc."
+        >{{system.state.equipment}}</textarea>
+      </section>
 
-		  <!-- toggle -->
-		  <span></span>
+      <section>
+        {{> "systems/d100base/templates/partials/localized-wounds.hbs"}}
+      </section>
 
-		  <!-- icon (MANQUANT AVANT) -->
-		  <span></span>
+      <section>
+        <h2>Notes d’état</h2>
+        <textarea
+          name="system.state.injuries"
+          rows="6"
+          placeholder="Notes libres sur les blessures, séquelles, soins, réparations, etc."
+        >{{system.state.injuries}}</textarea>
+      </section>
 
-		  <!-- name -->
-		  <span class="sortable" data-sort="name">
-			Nom <span class="sort-icon">▶</span>
-		  </span>
-
-		  <!-- type -->
-		  <span class="sortable" data-sort="type">
-			Type <span class="sort-icon">▶</span>
-		  </span>
-
-		  <!-- qty -->
-		  <span class="sortable" data-sort="quantity">
-			Qté <span class="sort-icon">▶</span>
-		  </span>
-
-		  <!-- weight -->
-		  <span class="sortable" data-sort="weight">
-			Poids <span class="sort-icon">▶</span>
-		  </span>
-
-		  <!-- extract -->
-		  <span></span>
-
-		  <!-- delete -->
-		  <span></span>
-
-		</li>
-
-		<!-- TREE -->
-		{{#each inventoryTree}}
-		  {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
-		{{/each}}
-
-	  </ul>
-
-	</div>
+    </div>
 
   </section>
 

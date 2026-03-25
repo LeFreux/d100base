@@ -4,6 +4,15 @@
     "SheetActor": "Feuille D100 Personnage",
     "SheetItem": "Feuille D100 Objet",
 
+    "Common": {
+      "Save": "Enregistrer",
+      "Cancel": "Annuler",
+      "State": "État",
+      "GeneralState": "État général",
+      "CurrentStatus": "État actuel",
+      "Legend": "Légende"
+    },
+
     "Attributes": {
       "corpsacorps": "Corps-à-corps",
       "capacitedetir": "Capacité de tir",
@@ -12,6 +21,129 @@
       "intelligence": "Intelligence",
       "perception": "Perception",
       "stress": "Stress"
+    },
+
+    "Inventory": {
+      "Title": "Inventaire",
+      "Empty": "Aucun objet dans l’inventaire.",
+      "Name": "Nom",
+      "Type": "Type",
+      "Quantity": "Qté",
+      "Weight": "Poids (kg)",
+      "Delete": "Supprimer",
+      "OpenClose": "Ouvrir / Fermer",
+      "Extract": "Sortir du conteneur",
+      "DragDropHint": "Glissez-déposez un objet pour le déplacer dans l’inventaire."
+    },
+
+    "Container": {
+      "Label": "Conteneur",
+      "Contents": "Contenu",
+      "RealContents": "Contenu réel",
+      "EmptyContents": "Ce conteneur est vide.",
+      "OwnedOnlyHint": "Le contenu réel n’est visible que lorsque ce conteneur est possédé par un acteur.",
+      "EmptyWeight": "Poids (vide)",
+      "ContentWeight": "Poids du contenu",
+      "TotalWeight": "Poids total",
+      "Capacity": "Capacité max",
+      "State": "État",
+      "StateOk": "OK",
+      "StateOverweight": "Surchargé",
+      "RemoveContainerStatus": "Retirer le statut de conteneur",
+      "RemoveContainerStatusConfirm": "Cet objet contient encore des éléments. Ils seront sortis du conteneur avant de retirer ce statut."
+    },
+
+    "Actor": {
+      "Portrait": "Portrait",
+      "Token": "Token",
+      "TogglePortraitToken": "Basculer Portrait / Token",
+      "Name": "Nom",
+      "Profile": "Profil",
+      "Journal": "Notes",
+      "State": "État & Équipement",
+      "InjuryState": "État",
+      "GeneralInjuryState": "État général",
+      "Encumbrance": "Charge",
+      "Overburdened": "Encombré"
+    },
+
+    "Details": {
+      "Age": "Âge",
+      "Height": "Taille",
+      "Weight": "Poids",
+      "Traits": "Traits",
+      "Aptitudes": "Aptitudes",
+      "Wounds": "Blessures",
+      "Biography": "Biographie"
+    },
+
+    "Journal": {
+      "NPCs": "PNJ rencontrés",
+      "Factions": "Factions",
+      "Notes": "Notes personnelles"
+    },
+
+    "StatePanel": {
+      "Equipment": "Équipement",
+      "EquipmentTodo": "À venir : gestion des emplacements (armes, protections, sac)",
+      "EquipmentPlaceholder": "Notes d’équipement porté, protections, armes équipées, sac, etc.",
+      "LocalizedWounds": "Blessures localisées",
+      "LocalizedWoundsTodo": "À venir : système de localisation des dégâts",
+      "LocalizedWoundsTitle": "Blessures localisées",
+      "LocalizedWoundsHelp": "Cliquez sur une zone du corps pour modifier son état.",
+      "LocalizedWoundsLegendTitle": "Légende",
+      "CurrentStatusTitle": "État actuel",
+      "InjuriesNotes": "Notes d’état",
+      "InjuriesPlaceholder": "Notes libres sur les blessures, séquelles, soins, réparations, etc."
+    },
+
+    "WoundParts": {
+      "Head": "Tête",
+      "Torso": "Torse",
+      "RightArm": "Bras droit",
+      "LeftArm": "Bras gauche",
+      "RightLeg": "Jambe droite",
+      "LeftLeg": "Jambe gauche"
+    },
+
+    "WoundStates": {
+      "Indemne": "Indemne",
+      "Blesse": "Blessé",
+      "GravementBlesse": "Gravement blessé",
+      "Inoperant": "Inopérant",
+      "Perdu": "Perdu",
+      "Artificiel": "Artificiel"
+    },
+
+    "InjuryStates": {
+      "indemne": "Indemne",
+      "legerement-blesse": "Légèrement blessé",
+      "blesse": "Blessé",
+      "modererement-blesse": "Modérément blessé",
+      "gravement-blesse": "Gravement blessé",
+      "mourant": "Mourant",
+      "inconscient": "Inconscient"
+    },
+
+    "Dialogs": {
+      "LocalizedWoundTitle": "Modifier l’état du membre",
+      "LocalizedWoundState": "État du membre"
+    },
+
+    "Notifications": {
+      "MigrationCompleted": "Migration des conteneurs terminée.",
+      "MigrationFailed": "Une erreur est survenue pendant la migration des conteneurs. Consulte la console."
+    },
+
+    "Errors": {
+      "ItemNotFound": "Item introuvable.",
+      "TargetContainerNotFound": "Conteneur cible introuvable.",
+      "InvalidContainer": "La cible n'est pas un conteneur.",
+      "CannotContainSelf": "Un conteneur ne peut pas être placé dans lui-même.",
+      "ContainerLoop": "Déplacement impossible : boucle parent / enfant.",
+      "CapacityExceeded": "Capacité du conteneur dépassée.",
+      "InvalidLocalizedWoundPart": "Membre invalide.",
+      "InvalidLocalizedWoundState": "État de blessure invalide."
     }
   }
 }

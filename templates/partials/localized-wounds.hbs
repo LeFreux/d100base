@@ -1,0 +1,50 @@
+<section class="localized-wounds-panel">
+  <header class="localized-wounds-header">
+    <h2>{{localize "D100BASE.StatePanel.LocalizedWoundsTitle"}}</h2>
+    <p class="localized-wounds-help">
+      {{localize "D100BASE.StatePanel.LocalizedWoundsHelp"}}
+    </p>
+  </header>
+
+  <div class="localized-wounds-layout">
+    <div class="localized-wounds-figure-wrapper">
+      <div
+        class="localized-wounds-figure"
+        role="group"
+        aria-label="{{localize "D100BASE.StatePanel.LocalizedWoundsTitle"}}"
+      >
+        {{{localizedWoundsSvg}}}
+      </div>
+    </div>
+
+    <aside class="localized-wounds-sidebar">
+      <div class="localized-wounds-current">
+        <h3>{{localize "D100BASE.StatePanel.LocalizedWoundsLegendTitle"}}</h3>
+
+        <ul class="localized-wounds-legend">
+          {{#each localizedWoundLegend as |entry|}}
+            <li class="localized-wounds-legend-item">
+              <span class="localized-wounds-legend-swatch {{entry.cssClass}}" aria-hidden="true"></span>
+              <span class="localized-wounds-legend-label">{{entry.label}}</span>
+            </li>
+          {{/each}}
+        </ul>
+      </div>
+
+      <div class="localized-wounds-summary">
+        <h3>{{localize "D100BASE.StatePanel.CurrentStatusTitle"}}</h3>
+
+        <ul class="localized-wounds-status-list">
+          {{#each localizedWoundParts as |part|}}
+            <li class="localized-wounds-status-item">
+              <span class="localized-wounds-status-part">{{part.label}}</span>
+              <span class="localized-wounds-status-value {{part.cssClass}}">
+                {{part.stateLabel}}
+              </span>
+            </li>
+          {{/each}}
+        </ul>
+      </div>
+    </aside>
+  </div>
+</section>

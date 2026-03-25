@@ -1,61 +1,55 @@
 <li
-  class="item {{#if node.system.isContainer}}container{{/if}}"
+  class="item {{#if node.system.isContainer}}container{{/if}} {{#if node.system.overweight}}overweight{{/if}}"
   data-item-id="{{node.id}}"
-  style="padding-left: {{multiply node.depth 12}}px;"
+  data-item-key="{{node.name}}::{{node.system.category}}"
+  style="--depth: {{node.depth}};"
 >
 
-  <!-- TOGGLE -->
-  {{#if node.system.isContainer}}
-    <div
-      class="container-toggle"
-      data-container-id="{{node.id}}"
-      title="Ouvrir / Fermer"
-    >
-      {{#if node.expanded}}▼{{else}}▶{{/if}}
+  <div class="item-main drag-handle" draggable="true" data-item-id="{{node.id}}">
+
+    {{#if node.system.isContainer}}
+      <div
+        class="container-toggle"
+        data-container-id="{{node.id}}"
+        title="Ouvrir / Fermer"
+      >
+        {{#if node.expanded}}▼{{else}}▶{{/if}}
+      </div>
+    {{else}}
+      <div class="container-spacer"></div>
+    {{/if}}
+
+    <img
+      class="inventory-icon"
+      src="{{node.img}}"
+      width="24"
+      height="24"
+      alt="{{node.name}}"
+      draggable="false"
+    />
+
+    <div class="item-name" title="{{node.name}}">
+      {{node.name}}
     </div>
-  {{else}}
-    <div class="container-spacer"></div>
-  {{/if}}
 
-  <!-- ICON -->
-  <img
-    class="inventory-icon"
-    src="{{node.img}}"
-    width="24"
-    height="24"
-  />
+  </div>
 
-  <!-- NAME -->
-<div class="item-name">
-  {{node.name}}
-</div>
+  <div class="item-type" title="{{node.system.category}}">
+    {{node.system.category}}
+  </div>
 
-  <!-- TYPE -->
-<div class="item-type">
-  {{node.system.category}}
-</div>
-
-  <!-- QTY -->
   <input
     class="item-qty"
     type="number"
     min="0"
     value="{{node.system.quantity}}"
+    {{#if node.system.isContainer}}readonly{{/if}}
   />
 
-  <!-- WEIGHT -->
-  <div class="item-weight">
-    {{#if node.system.isContainer}}
-      {{formatNumberClean node.system.weight}} kg
-      {{#if node.system.capacityWeight}}
-        / {{formatNumberClean node.system.capacityWeight}} kg
-      {{/if}}
-    {{else}}
-      {{formatNumberClean node.system.weight}} kg
-    {{/if}}
+  <div class="item-weight {{#if node.system.overweight}}overweight{{/if}}">
+    {{formatNumberClean node.system.weight}} kg
   </div>
 
-  <!-- EXTRACT -->
   {{#if node.containerId}}
     <div
       class="item-extract"
@@ -65,10 +59,9 @@
       🡅
     </div>
   {{else}}
-    <div></div>
+    <div class="item-action-spacer"></div>
   {{/if}}
 
-  <!-- DELETE -->
   <div
     class="item-delete"
     data-item-id="{{node.id}}"
@@ -80,9 +73,7 @@
 </li>
 
 {{#if node.system.isContainer}}
-  <ul
-    class="container-children {{#unless node.expanded}}collapsed{{/unless}}"
-  >
+  <ul class="container-children {{#unless node.expanded}}collapsed{{/unless}}">
     {{#each node.contents as |child|}}
       {{> "systems/d100base/templates/partials/inventory-node.hbs" node=child}}
     {{/each}}

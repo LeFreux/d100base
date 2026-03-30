@@ -49,24 +49,26 @@
 
         </div>
 
-        <div class="secondary-row">
+		<div class="secondary-row type-row">
 
-          <label>
-            Type
-            <select name="system.category">
-              {{selectOptions categories selected=system.category labelAttr="label" valueAttr="value"}}
-            </select>
-          </label>
+		  <div class="type-block">
+			<label>Type</label>
+			<select name="system.category">
+			  {{selectOptions categories selected=system.category labelAttr="label" valueAttr="value"}}
+			</select>
+		  </div>
 
-          <label class="container-checkbox">
-            <input
-              type="checkbox"
-              name="system.isContainer"
-              {{checked system.isContainer}}>
-            Conteneur
-          </label>
+		  <div class="container-block">
+			<label>
+			  <input
+				type="checkbox"
+				name="system.isContainer"
+				{{checked system.isContainer}}>
+			  Conteneur
+			</label>
+		  </div>
 
-        </div>
+		</div>
 
         {{#if system.isContainer}}
         <div class="secondary-row">

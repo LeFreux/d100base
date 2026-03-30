@@ -53,19 +53,26 @@
       "RemoveContainerStatusConfirm": "Cet objet contient encore des éléments. Ils seront sortis du conteneur avant de retirer ce statut."
     },
 
-    "Actor": {
-      "Portrait": "Portrait",
-      "Token": "Token",
-      "TogglePortraitToken": "Basculer Portrait / Token",
-      "Name": "Nom",
-      "Profile": "Profil",
-      "Journal": "Notes",
-      "State": "État & Équipement",
-      "InjuryState": "État",
-      "GeneralInjuryState": "État général",
-      "Encumbrance": "Charge",
-      "Overburdened": "Encombré"
-    },
+	"Actor": {
+	  "Portrait": "Portrait",
+	  "Token": "Token",
+	  "TogglePortraitToken": "Basculer Portrait / Token",
+	  "Name": "Nom",
+	  "Profile": "Profil",
+	  "Journal": "Notes",
+	  "State": "État & Équipement",
+	  "InjuryState": "État",
+	  "GeneralInjuryState": "État général",
+	  "Encumbrance": "Charge",
+	  "Overburdened": "Encombré",
+	  "AptitudesEmpty": "Aucune aptitude renseignée.",
+	  "AptitudeAdd": "Ajouter une capacité",
+	  "AptitudeName": "Nom de la capacité",
+	  "AptitudeDescription": "Description",
+	  "AptitudeNameRequired": "Le nom de la capacité est requis.",
+	  "AptitudeDelete": "Supprimer",
+	  "AptitudeEdit": "Modifier"
+	},
 
     "Details": {
       "Age": "Âge",

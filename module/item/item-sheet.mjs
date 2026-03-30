@@ -40,7 +40,7 @@ export class D100ItemSheet extends ItemSheet {
       { value: "Livre", label: "Livre" },
       { value: "Loisir", label: "Loisir" },
       { value: "Lumière", label: "Lumière" },
-      { value: "Matériel", label: "Matériel" },
+      { value: "Matériau", label: "Matériau" },
       { value: "Munition", label: "Munition" },
       { value: "Médical", label: "Médical" },
       { value: "Nourriture", label: "Nourriture" },

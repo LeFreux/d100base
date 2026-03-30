@@ -172,15 +172,51 @@
 
         <h2>Historique</h2>
 
-        <div class="field">
-          <label>Aptitudes</label>
-          <textarea name="system.details.aptitude" rows="4">{{system.details.aptitude}}</textarea>
-        </div>
+		<div class="field aptitude-field">
+		  <label>Aptitudes</label>
 
-        <div class="field">
-          <label>Blessures</label>
-          <textarea name="system.details.blessures" rows="3">{{system.details.blessures}}</textarea>
-        </div>
+		  <div class="aptitude-cards">
+			{{#if hasAptitudesCards}}
+			  {{#each aptitudesCards as |aptitude|}}
+				<article
+				  class="aptitude-card {{#if aptitude.collapsed}}collapsed{{/if}}"
+				  data-aptitude-id="{{aptitude.id}}"
+				>
+				  <button
+				    type="button"
+				    class="aptitude-card-toggle"
+				    aria-expanded="{{#if aptitude.collapsed}}false{{else}}true{{/if}}"
+				  >
+				    <span class="aptitude-card-title">
+					  <span class="aptitude-card-icon">
+					    <i class="fas fa-star" aria-hidden="true"></i>
+					  </span>
+					  <span class="aptitude-card-label">{{aptitude.name}}</span>
+				    </span>
+
+				    <span class="aptitude-card-actions">
+					  <i class="fas fa-pen aptitude-card-edit" data-aptitude-id="{{aptitude.id}}"></i>
+					  <i class="fas fa-chevron-down aptitude-card-arrow" aria-hidden="true"></i>
+				    </span>
+				  </button>
+
+				  <div class="aptitude-card-body-wrap">
+					<div class="aptitude-card-body">{{aptitude.description}}</div>
+				  </div>
+				</article>
+			  {{/each}}
+			{{else}}
+			  <p class="aptitude-empty">{{localize "D100BASE.Actor.AptitudesEmpty"}}</p>
+			{{/if}}
+
+			<button type="button" class="aptitude-add-card">
+			  <span class="aptitude-add-card-icon">
+				<i class="fas fa-plus" aria-hidden="true"></i>
+			  </span>
+			  <span class="aptitude-add-card-label">{{localize "D100BASE.Actor.AptitudeAdd"}}</span>
+			</button>
+		  </div>
+		</div>
 
         <div class="field">
           <label>Biographie</label>

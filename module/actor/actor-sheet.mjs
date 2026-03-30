@@ -12,6 +12,8 @@ export class D100ActorSheet extends ActorSheet {
       field: null,
       direction: null
     };
+
+    this._collapsedAptitudes = new Set();
   }
 
   /* ===================================== */
@@ -84,12 +86,15 @@ export class D100ActorSheet extends ActorSheet {
       }
     };
 
-    data.showToken = this.actor.getFlag("d100base", "showToken") ?? false;
-    data.tokenImg = this.actor.prototypeToken?.texture?.src || this.actor.img;
+	data.showToken = this.actor.getFlag("d100base", "showToken") ?? false;
+	data.tokenImg = this.actor.prototypeToken?.texture?.src || this.actor.img;
 
-    /* ------------------------------------- */
-    /* BLESSURES LOCALISÉES                  */
-    /* ------------------------------------- */
+	data.aptitudesCards = this._prepareAptitudesCards(data.system?.details?.aptitude ?? "");
+	data.hasAptitudesCards = data.aptitudesCards.length > 0;
+
+	/* ------------------------------------- */
+	/* BLESSURES LOCALISÉES                  */
+	/* ------------------------------------- */
 
 	const localizedWounds = this._getLocalizedWoundsSnapshot();
 
@@ -102,6 +107,233 @@ export class D100ActorSheet extends ActorSheet {
     return data;
   }
 
+  /* ===================================== */
+  /* APTITUDES                             */
+  /* ===================================== */
+
+  _prepareAptitudesCards(rawText) {
+    if (!rawText?.trim()) return [];
+
+    return rawText
+      .split(/\n\s*\n+/)
+      .map((entry, index) => {
+        const normalized = entry.trim();
+        const match = normalized.match(/^(.+?)\s:\s([\s\S]*)$/);
+
+        const id = `aptitude-${index}`;
+        const name = match ? match[1].trim() : normalized;
+        const description = match ? match[2].trim() : "";
+
+        return {
+          id,
+          name,
+          description,
+          collapsed: this._collapsedAptitudes.has(id)
+        };
+      })
+      .filter(entry => entry.name.length);
+  }
+  
+
+  _initializeAptitudeCards(html) {
+    html.find(".aptitude-card").each((_, element) => {
+      const wrap = element.querySelector(".aptitude-card-body-wrap");
+      const body = element.querySelector(".aptitude-card-body");
+      if (!wrap || !body) return;
+
+      if (element.classList.contains("collapsed")) {
+        wrap.style.height = "0px";
+        wrap.style.opacity = "0";
+      } else {
+        wrap.style.height = "auto";
+        wrap.style.opacity = "1";
+      }
+    });
+  }
+
+  _toggleAptitudeCard(card) {
+    if (!card) return;
+
+    const wrap = card.querySelector(".aptitude-card-body-wrap");
+    const body = card.querySelector(".aptitude-card-body");
+    const toggle = card.querySelector(".aptitude-card-toggle");
+    const aptitudeId = card.dataset.aptitudeId;
+
+    if (!wrap || !body) return;
+
+    const isCollapsed = card.classList.contains("collapsed");
+
+    if (isCollapsed) {
+      card.classList.remove("collapsed");
+      toggle?.setAttribute("aria-expanded", "true");
+      if (aptitudeId) this._collapsedAptitudes.delete(aptitudeId);
+
+      wrap.style.height = "0px";
+      wrap.style.opacity = "0";
+
+      requestAnimationFrame(() => {
+        wrap.style.height = `${body.scrollHeight}px`;
+        wrap.style.opacity = "1";
+      });
+
+      const onExpandEnd = (event) => {
+        if (event.propertyName !== "height") return;
+        wrap.style.height = "auto";
+        wrap.removeEventListener("transitionend", onExpandEnd);
+      };
+
+      wrap.addEventListener("transitionend", onExpandEnd);
+      return;
+    }
+
+    wrap.style.height = `${body.scrollHeight}px`;
+    wrap.style.opacity = "1";
+
+    requestAnimationFrame(() => {
+      card.classList.add("collapsed");
+      toggle?.setAttribute("aria-expanded", "false");
+      if (aptitudeId) this._collapsedAptitudes.add(aptitudeId);
+
+      wrap.style.height = "0px";
+      wrap.style.opacity = "0";
+    });
+  }
+
+  async _openAddAptitudeDialog() {
+    if (!this.isEditable) return false;
+
+    const content = `
+      <form class="aptitude-dialog">
+        <div class="form-group">
+		  <label>${game.i18n.localize("D100BASE.Actor.AptitudeName")}</label>
+          <input type="text" name="aptitude-name">
+        </div>
+
+        <div class="form-group">
+		  <label>${game.i18n.localize("D100BASE.Actor.AptitudeDescription")}</label>
+          <textarea name="aptitude-description" rows="5"></textarea>
+        </div>
+      </form>
+    `;
+
+    return new Promise(resolve => {
+      new Dialog({
+		title: game.i18n.localize("D100BASE.Actor.AptitudeAdd"),
+        content,
+        buttons: {
+          save: {
+            icon: '<i class="fas fa-check"></i>',
+            label: game.i18n.localize("D100BASE.Common.Save"),
+            callback: async html => {
+              const name = String(html.find('[name="aptitude-name"]').val() ?? "").trim();
+              const description = String(html.find('[name="aptitude-description"]').val() ?? "").trim();
+
+              if (!name) {
+			    ui.notifications.warn(game.i18n.localize("D100BASE.Actor.AptitudeNameRequired"));
+                resolve(false);
+                return;
+              }
+
+              const newEntry = `${name} : ${description}`;
+              const currentRaw = String(this.actor.system?.details?.aptitude ?? "").trim();
+              const nextRaw = currentRaw ? `${currentRaw}\n\n${newEntry}` : newEntry;
+
+              await this.actor.update({
+                "system.details.aptitude": nextRaw
+              });
+
+              resolve(true);
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: game.i18n.localize("D100BASE.Common.Cancel"),
+            callback: () => resolve(false)
+          }
+        },
+        default: "save",
+        render: html => {
+          html.find('[name="aptitude-name"]').trigger("focus");
+        },
+        close: () => resolve(false)
+      }).render(true);
+    });
+  } 
+
+  async _openEditAptitudeDialog(aptitudeId) {
+    if (!this.isEditable) return;
+
+    const raw = this.actor.system?.details?.aptitude ?? "";
+    const cards = this._prepareAptitudesCards(raw);
+
+    const target = cards.find(c => c.id === aptitudeId);
+    if (!target) return;
+
+    const content = `
+      <form class="aptitude-dialog">
+        <div class="form-group">
+          <label>${game.i18n.localize("D100BASE.Actor.AptitudeName")}</label>
+          <input type="text" name="aptitude-name" value="${target.name}">
+        </div>
+
+        <div class="form-group">
+          <label>${game.i18n.localize("D100BASE.Actor.AptitudeDescription")}</label>
+          <textarea name="aptitude-description" rows="5">${target.description}</textarea>
+        </div>
+      </form>
+    `;
+
+    new Dialog({
+      title: game.i18n.localize("D100BASE.Actor.AptitudeAdd"),
+      content,
+
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-check"></i>',
+          label: game.i18n.localize("D100BASE.Common.Save"),
+          callback: async html => {
+            const name = html.find('[name="aptitude-name"]').val().trim();
+            const desc = html.find('[name="aptitude-description"]').val().trim();
+
+            if (!name) {
+              ui.notifications.warn(game.i18n.localize("D100BASE.Actor.AptitudeNameRequired"));
+              return;
+            }
+
+            target.name = name;
+            target.description = desc;
+
+            await this._saveAptitudes(cards);
+          }
+        },
+
+        delete: {
+          icon: '<i class="fas fa-trash"></i>',
+          label: "Supprimer",
+          callback: async () => {
+            const filtered = cards.filter(c => c.id !== aptitudeId);
+            await this._saveAptitudes(filtered);
+          }
+        },
+
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: game.i18n.localize("D100BASE.Common.Cancel")
+        }
+      }
+    }).render(true);
+  }  
+  
+  async _saveAptitudes(cards) {
+    const text = cards
+      .map(c => `${c.name} : ${c.description}`)
+      .join("\n\n");
+
+    await this.actor.update({
+      "system.details.aptitude": text
+    });
+  }
+  
   /* ===================================== */
   /* BLESSURES LOCALISÉES - DATA           */
   /* ===================================== */
@@ -434,8 +666,10 @@ export class D100ActorSheet extends ActorSheet {
   /* LISTENERS                             */
   /* ===================================== */
 
-  activateListeners(html) {
+    activateListeners(html) {
     super.activateListeners(html);
+
+    this._initializeAptitudeCards(html);
 
     /* ROLL */
     html.find("[data-roll]").click(ev => {
@@ -451,8 +685,24 @@ export class D100ActorSheet extends ActorSheet {
       await this.actor.setFlag("d100base", "showToken", !current);
     });
 
+    /* TOGGLE APTITUDES */
+    html.on("click", ".aptitude-card-toggle", ev => {
+	  ev.preventDefault();
+	  const card = ev.currentTarget.closest(".aptitude-card");
+	  this._toggleAptitudeCard(card);
+	});
+
+	/* EDIT APTITUDE */
+	html.on("click", ".aptitude-card-edit", ev => {
+	  ev.preventDefault();
+	  ev.stopPropagation(); // 🔥 important pour ne pas toggle
+
+	  const id = ev.currentTarget.dataset.aptitudeId;
+	  this._openEditAptitudeDialog(id);
+	});
+
     /* BLESSURES LOCALISÉES */
-    html.on("click", ".localized-wound-svg-part", async ev => {
+	html.on("click", ".localized-wound-svg-part", async ev => {
       if (!this.isEditable) return;
       await this._onLocalizedWoundPartClick(ev);
     });
@@ -465,10 +715,16 @@ export class D100ActorSheet extends ActorSheet {
       await this._onLocalizedWoundPartClick(ev);
     });
 
-    if (!this.isEditable) return;
+	if (!this.isEditable) return;
 
-    /* OPEN ITEM */
-    const inventoryItemSelector = ".inventory-list .item";
+	/* AJOUTER UNE APTITUDE */
+	html.find(".aptitude-add-card").click(async ev => {
+	  ev.preventDefault();
+	  await this._openAddAptitudeDialog();
+	});
+
+	/* OPEN ITEM */
+	const inventoryItemSelector = ".inventory-list .item";
 
     html.find(inventoryItemSelector).dblclick(ev => {
       const id = ev.currentTarget.dataset.itemId;

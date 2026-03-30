@@ -755,9 +755,9 @@ export class D100Actor extends Actor {
     const result = roll.total;
 
     let outcome = "Échec";
-    if (result === 1) outcome = "Critique";
+    if (result <= 5) outcome = "Réussite Critique";
     else if (result <= attributeValue) outcome = "Réussite";
-    else if (result >= 96) outcome = "Fumble";
+    else if (result >= 96) outcome = "Échec Critique";
 
     await roll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor: this }),

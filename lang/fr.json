@@ -22,19 +22,46 @@
       "perception": "Perception",
       "stress": "Stress"
     },
+	
+	"AttributesShort": {
+	  "corpsacorps": "CC",
+	  "capacitedetir": "CT",
+	  "force": "F",
+	  "agilite": "A",
+	  "intelligence": "I",
+	  "perception": "P",
+	  "stress": "S"
+	},
 
-    "Inventory": {
-      "Title": "Inventaire",
-      "Empty": "Aucun objet dans l’inventaire.",
-      "Name": "Nom",
-      "Type": "Type",
-      "Quantity": "Qté",
-      "Weight": "Poids (kg)",
-      "Delete": "Supprimer",
-      "OpenClose": "Ouvrir / Fermer",
-      "Extract": "Sortir du conteneur",
-      "DragDropHint": "Glissez-déposez un objet pour le déplacer dans l’inventaire."
+    "Roll": {
+      "CriticalSuccess": "Réussite critique",
+      "Success": "Réussite",
+      "Failure": "Échec",
+      "CriticalFailure": "Échec critique"
     },
+
+	"Inventory": {
+	  "Title": "Inventaire",
+	  "Empty": "Aucun objet dans l’inventaire.",
+	  "Name": "Nom",
+	  "Type": "Type",
+	  "Quantity": "Qté",
+	  "Weight": "Poids (kg)",
+	  "Delete": "Supprimer",
+	  "OpenClose": "Ouvrir / Fermer",
+	  "Extract": "Sortir du conteneur",
+	  "TransferButton": "Transférer",
+	  "TransferTitle": "Transférer un objet",
+	  "NoTransferSourceToken": "Aucun token source valide n’est disponible pour ce transfert.",
+	  "NoTransferTarget": "Aucun acteur cible visible et autorisé n’est disponible pour ce transfert.",
+	  "NoTransferTargetSelected": "Aucun acteur cible sélectionné.",
+	  "TransferTargetNotFound": "Acteur cible introuvable.",
+	  "TransferPermissionDenied": "Permissions insuffisantes sur l’acteur cible.",
+	  "TransferTargetNotOnScene": "Aucun token cible présent sur la scène.",
+	  "TransferTargetNotVisible": "Aucun token cible visible pour ce transfert.",
+	  "TransferSuccess": "Transfert effectué vers {actor}.",
+	  "DragDropHint": "Glissez-déposez un objet pour le déplacer dans l’inventaire."
+	},
 
     "Container": {
       "Label": "Conteneur",
@@ -73,6 +100,31 @@
 	  "AptitudeDelete": "Supprimer",
 	  "AptitudeEdit": "Modifier"
 	},
+
+    "HUD": {
+      "AttributesTitle": "Raccourcis",
+      "OpenSheet": "Ouvrir la fiche",
+      "RollAttribute": "Jet de {attribute}",
+      "MissingRollMethod": "Cette fiche ne sait pas lancer de jet d’attribut.",
+      "RollError": "Erreur pendant le jet d’attribut. Consulte la console."
+    },
+
+    "Initiative": {
+      "Button": "Initiative",
+      "ShortLabel": "Init",
+      "Title": "Initiative",
+      "RollTitle": "Lancer l’initiative",
+      "AgilityLabel": "Agilité",
+      "RollLabel": "Jet",
+      "ScoreLabel": "Initiative",
+      "CriticalBonus": "Bonus critique : +{value}",
+      "CriticalPenalty": "Malus critique : {value}",
+      "NoActiveCombat": "Aucun combat actif.",
+      "MissingCombatant": "Aucun combatant correspondant trouvé pour cette initiative.",
+      "AmbiguousCombatant": "Plusieurs instances de cet acteur sont présentes dans le combat. Lancez l’initiative depuis le token concerné.",
+      "MissingRollMethod": "Cette fiche ne sait pas lancer l’initiative.",
+      "RollError": "Erreur pendant le lancement de l’initiative. Consulte la console."
+    },
 
     "Details": {
       "Age": "Âge",
@@ -142,15 +194,19 @@
       "MigrationFailed": "Une erreur est survenue pendant la migration des conteneurs. Consulte la console."
     },
 
-    "Errors": {
-      "ItemNotFound": "Item introuvable.",
-      "TargetContainerNotFound": "Conteneur cible introuvable.",
-      "InvalidContainer": "La cible n'est pas un conteneur.",
-      "CannotContainSelf": "Un conteneur ne peut pas être placé dans lui-même.",
-      "ContainerLoop": "Déplacement impossible : boucle parent / enfant.",
-      "CapacityExceeded": "Capacité du conteneur dépassée.",
-      "InvalidLocalizedWoundPart": "Membre invalide.",
-      "InvalidLocalizedWoundState": "État de blessure invalide."
-    }
+	"Errors": {
+	  "ItemNotFound": "Item introuvable.",
+	  "TargetContainerNotFound": "Conteneur cible introuvable.",
+	  "InvalidContainer": "La cible n'est pas un conteneur.",
+	  "CannotContainSelf": "Un conteneur ne peut pas être placé dans lui-même.",
+	  "CannotTransferToSelf": "Le transfert vers le même acteur n'est pas autorisé.",
+	  "ContainerLoop": "Déplacement impossible : boucle parent / enfant.",
+	  "CapacityExceeded": "Capacité du conteneur dépassée.",
+	  "InventorySubtreeNotFound": "Sous-arbre d'inventaire introuvable.",
+	  "InventoryTransferFailed": "Erreur pendant le transfert d'inventaire.",
+	  "InventoryTransferFailedDetailed": "Erreur pendant le transfert d'inventaire. Consulte la console.",
+	  "InvalidLocalizedWoundPart": "Membre invalide.",
+	  "InvalidLocalizedWoundState": "État de blessure invalide."
+	}
   }
 }

@@ -46,6 +46,10 @@ h2 {
   overflow: hidden;
 }
 
+.d100base.sheet.actor .window-header .window-title {
+  color: #f5f5f5;
+}
+
 /* ================= LAYOUT GLOBAL ================= */
 
 .d100base.sheet.actor .sheet-container {
@@ -190,8 +194,9 @@ h2 {
 
   grid-template-columns:
     minmax(120px, 20%)
-    1fr
-    auto;
+    minmax(180px, 1.2fr)
+    minmax(150px, 0.9fr)
+    minmax(160px, 1fr);
 
   grid-template-rows:
     min-content
@@ -199,9 +204,9 @@ h2 {
     minmax(260px, 1fr);
 
   grid-template-areas:
-    "portrait name injury"
-    "portrait attributes attributes"
-    "inventory inventory inventory";
+    "portrait name initiative injury"
+    "portrait attributes attributes attributes"
+    "inventory inventory inventory inventory";
 
   gap: 12px;
 
@@ -213,6 +218,7 @@ h2 {
 
 .portrait-panel { grid-area: portrait; }
 .name-panel { grid-area: name; }
+.initiative-panel { grid-area: initiative; }
 .injury-panel { grid-area: injury; }
 .attributes-panel { grid-area: attributes; }
 .inventory-panel { grid-area: inventory; }
@@ -287,17 +293,163 @@ h2 {
 }
 
 /* ======================================================== */
-/* ============= NAME & INJURY STATE ====================== */
+/* ================= ACTOR SHEET LIMITED =================== */
 /* ======================================================== */
 
+.d100base.sheet.actor .limited-sheet-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+}
+
+.d100base.sheet.actor .actor-limited-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.d100base.sheet.actor .limited-portrait-panel,
+.d100base.sheet.actor .limited-name-panel {
+  width: 100%;
+}
+
+.d100base.sheet.actor .limited-portrait-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.d100base.sheet.actor .limited-portrait-panel .portrait-header {
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.d100base.sheet.actor .limited-portrait-panel img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #999;
+}
+
+.d100base.sheet.actor .limited-name-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.d100base.sheet.actor .limited-name-panel label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.d100base.sheet.actor .limited-actor-name {
+  max-width: 100%;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
+}
+
+
+/* ======================================================== */
+/* ========= NAME / INITIATIVE / INJURY STATE ============= */
+/* ======================================================== */
+
+.name-panel,
+.initiative-panel,
 .injury-panel {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 6px;
+}
+
+.name-panel label,
+.initiative-panel label,
+.injury-panel label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.name-panel .actor-name-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.initiative-panel {
+  align-items: stretch;
+}
+
+.initiative-roll-button {
+  min-height: 16px;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 6px 10px;
+  box-sizing: border-box;
+
+  border: 1px solid #999;
+  border-radius: 8px;
+  background: linear-gradient(#f0f0f0, #dddddd);
+
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.initiative-roll-button:hover {
+  background: linear-gradient(#f8f8f8, #e9e9e9);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+.initiative-roll-button:active {
+  transform: scale(0.98);
+}
+
+.initiative-roll-button-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  flex: 0 0 auto;
+
+  background-color: #222;
+
+  -webkit-mask: url("../assets/icons/icon_BASE_star-circled_empty.svg") center / contain no-repeat;
+  mask: url("../assets/icons/icon_BASE_star-circled_empty.svg") center / contain no-repeat;
+}
+
+.initiative-roll-button-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #222;
 }
 
 .injury-panel select {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -445,6 +597,7 @@ h2 {
     minmax(110px, 1fr)
     clamp(48px, 8%, 80px)
     clamp(72px, 11%, 120px)
+    24px
     24px
     24px;
   align-items: center;
@@ -602,6 +755,7 @@ h2 {
 
 .item-delete,
 .item-extract,
+.item-transfer,
 .item-action-spacer {
   width: 24px;
   height: 24px;
@@ -611,14 +765,24 @@ h2 {
 }
 
 .item-delete,
-.item-extract {
+.item-extract,
+.item-transfer {
   cursor: pointer;
   opacity: 0.3;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.item-transfer {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
 }
 
 .item:hover .item-delete,
-.item:hover .item-extract {
+.item:hover .item-extract,
+.item:hover .item-transfer {
   opacity: 1;
 }
 
@@ -628,6 +792,10 @@ h2 {
 
 .item-extract:hover {
   color: #007bff;
+}
+
+.item-transfer:hover {
+  color: #7b1fa2;
 }
 
 .item.dragging {
@@ -1111,6 +1279,48 @@ h2 {
 }
 
 /* ======================================================== */
+/* ================= CHAT / INITIATIVE ===================== */
+/* ======================================================== */
+
+.d100base-chat.d100base-chat-initiative {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,245,245,0.96));
+}
+
+.d100base-chat-initiative-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #111;
+}
+
+.d100base-chat-initiative-subline {
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(0,0,0,0.75);
+}
+
+.d100base-chat-initiative-score {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  color: #111;
+  margin-top: 2px;
+}
+
+.d100base-chat-initiative-outcome {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #222;
+}
+
+/* ======================================================== */
 /* ================= ITEM SHEET ============================ */
 /* ======================================================== */
 
@@ -1296,6 +1506,282 @@ h2 {
 }
 
 /* ======================================================== */
+/* ================= ITEM SHEET LIMITED ==================== */
+/* ======================================================== */
+
+.d100base.sheet.item .item-header-limited {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  min-height: 220px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.d100base.sheet.item .item-header-limited .item-icon {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.d100base.sheet.item .item-header-limited .item-header-fields {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.d100base.sheet.item .limited-item-name {
+  max-width: 100%;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* ======================================================== */
+/* ================= ATTRIBUTE HUD ========================= */
+/* ======================================================== */
+
+#d100base-attribute-hud {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+#d100base-attribute-hud[hidden] {
+  display: none !important;
+}
+
+#d100base-attribute-hud.active {
+  display: block;
+}
+
+#d100base-attribute-hud.dragging {
+  user-select: none;
+}
+
+#d100base-attribute-hud .attribute-hud-shell {
+  pointer-events: auto;
+  width: max-content;
+  max-width: min(96vw, 1100px);
+  padding: 6px;
+  border: 1px solid #999;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  backdrop-filter: blur(4px);
+}
+
+#d100base-attribute-hud .attribute-hud-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  margin-bottom: 6px;
+  padding: 3px 10px;
+  border: 1px solid #aaa;
+  border-radius: 7px;
+  background: linear-gradient(#efefef, #dfdfdf);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #222;
+  cursor: grab;
+}
+
+#d100base-attribute-hud.dragging .attribute-hud-drag-handle,
+#d100base-attribute-hud .attribute-hud-drag-handle:active {
+  cursor: grabbing;
+}
+
+#d100base-attribute-hud .attribute-hud-body {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: max-content;
+}
+
+#d100base-attribute-hud .attribute-hud-state-button {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  min-height: 46px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background: linear-gradient(#f2f2f2, #e4e4e4);
+  cursor: pointer;
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#d100base-attribute-hud .attribute-hud-state-button:hover {
+  background: linear-gradient(#f8f8f8, #ebebeb);
+}
+
+#d100base-attribute-hud .attribute-hud-state-button:focus-visible {
+  outline: 1px solid rgba(0,0,0,0.25);
+  outline-offset: 1px;
+}
+
+#d100base-attribute-hud .attribute-hud-state-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+#d100base-attribute-hud .attribute-hud-init-button {
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  min-height: 46px;
+  padding: 4px 3px;
+  box-sizing: border-box;
+
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  flex: 0 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+#d100base-attribute-hud .attribute-hud-init-button:hover {
+  background: #f2f2f2;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+#d100base-attribute-hud .attribute-hud-init-button:active {
+  transform: scale(0.97);
+}
+
+#d100base-attribute-hud .attribute-hud-init-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+#d100base-attribute-hud .attribute-hud-init-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+#d100base-attribute-hud .attribute-hud-init-label {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #222;
+}
+
+
+#d100base-attribute-hud .attribute-hud-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: stretch;
+  flex: 0 0 auto;
+  width: max-content;
+}
+
+#d100base-attribute-hud .attribute-hud-attribute {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  min-height: 46px;
+  padding: 4px 3px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  flex: 0 0 auto;
+}
+
+#d100base-attribute-hud .attribute-hud-attribute:hover {
+  background: #f2f2f2;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+#d100base-attribute-hud .attribute-hud-attribute:active {
+  transform: scale(0.97);
+}
+
+#d100base-attribute-hud .attribute-hud-attribute:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+#d100base-attribute-hud .attribute-hud-attribute-short {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #222;
+}
+
+#d100base-attribute-hud .attribute-hud-attribute-label {
+  max-width: 54px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.72;
+  color: #222;
+}
+
+#d100base-attribute-hud .attribute-hud-attribute-value {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111;
+}
+
+@media (max-width: 900px) {
+  #d100base-attribute-hud .attribute-hud-body {
+    flex-direction: column;
+  }
+
+  #d100base-attribute-hud .attribute-hud-grid {
+    flex-wrap: wrap;
+  }
+}
+
+/* ======================================================== */
 /* ================= RESPONSIVE ============================ */
 /* ======================================================== */
 
@@ -1309,6 +1795,7 @@ h2 {
     grid-template-areas:
       "portrait"
       "name"
+      "initiative"
       "injury"
       "attributes"
       "inventory";

@@ -1,0 +1,58 @@
+<section class="attribute-hud-shell">
+  <div
+    class="attribute-hud-drag-handle"
+    data-action="drag-handle"
+    aria-label="{{hudTitle}}"
+  >
+    {{hudTitle}}
+  </div>
+
+  <div class="attribute-hud-body">
+    <button
+      type="button"
+      class="attribute-hud-state-button"
+      data-action="open-state-tab"
+      title="{{openStateTitle}}"
+      aria-label="{{openStateTitle}}"
+    >
+      <img
+        class="attribute-hud-state-icon"
+        src="systems/d100base/assets/icons/icon_BASE_token.svg"
+        alt=""
+        aria-hidden="true"
+      />
+    </button>
+
+    <button
+      type="button"
+      class="attribute-hud-init-button"
+      data-action="roll-initiative"
+      title="{{initiativeTitle}}"
+      aria-label="{{initiativeTitle}}"
+    >
+      <img
+        class="attribute-hud-init-icon"
+        src="systems/d100base/assets/icons/icon_BASE_star-circled_empty.svg"
+        alt=""
+        aria-hidden="true"
+      />
+      <span class="attribute-hud-init-label">{{initiativeLabel}}</span>
+    </button>
+
+    <div class="attribute-hud-grid">
+      {{#each attributes as |attribute|}}
+        <button
+          type="button"
+          class="attribute-hud-attribute"
+          data-action="roll-attribute"
+          data-attribute-key="{{attribute.key}}"
+          title="{{attribute.rollTitle}}"
+          aria-label="{{attribute.rollTitle}}"
+        >
+          <span class="attribute-hud-attribute-short">{{attribute.short}}</span>
+          <span class="attribute-hud-attribute-value">{{attribute.value}}</span>
+        </button>
+      {{/each}}
+    </div>
+  </div>
+</section>

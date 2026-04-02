@@ -3,8 +3,13 @@ import { D100Actor } from "./module/actor/actor.mjs";
 import { D100Item } from "./module/item/item.mjs";
 import { D100ActorSheet } from "./module/actor/actor-sheet.mjs";
 import { D100ItemSheet } from "./module/item/item-sheet.mjs";
+import { D100AttributeHud } from "./module/hud/attribute-hud.mjs";
 
-const D100BASE_CONTAINER_MIGRATION_VERSION = "0.2.0";
+const D100BASE_CONTAINER_MIGRATION_VERSION = "0.2.9";
+
+let d100AttributeHud = null;
+let d100BaseOriginalCombatRollInitiative = null;
+const d100PendingInventoryRenders = new Map();
 
 /* ======================================================== */
 /* ======================= INIT ============================ */
@@ -33,6 +38,17 @@ Hooks.once("init", async () => {
     D100Item,
     D100ActorSheet,
     D100ItemSheet,
+    D100AttributeHud,
+    attributeHud: null,
+
+    getSingleControlledD100Token,
+    getTokenForCombatant,
+    setCombatantInitiative,
+    rollCombatantInitiative,
+    rollCombatantInitiatives,
+    patchStandardCombatRollInitiative,
+
+    requestAttributeHudSync,
     migrateLegacyContainers,
     migrateLegacyDefaultContents
   };
@@ -111,6 +127,8 @@ Hooks.once("init", async () => {
     makeDefault: true,
     label: "D100BASE.SheetItem"
   });
+  
+  patchStandardCombatRollInitiative();
 
 });
 
@@ -122,6 +140,19 @@ Hooks.once("ready", async () => {
 
   console.log("D100 Base | Ready");
 
+  if (d100AttributeHud) {
+    d100AttributeHud.destroy();
+  }
+
+  d100AttributeHud = new D100AttributeHud();
+  d100AttributeHud.init();
+
+  if (game.d100base) {
+    game.d100base.attributeHud = d100AttributeHud;
+  }
+
+  requestAttributeHudSync();
+
   if (!game.user.isGM) return;
 
   try {
@@ -132,6 +163,309 @@ Hooks.once("ready", async () => {
   }
 
 });
+
+/* ======================================================== */
+/* ================= COMBAT / INITIATIVE ================== */
+/* ======================================================== */
+
+/**
+ * Retourne le Token source d’un combatant si possible.
+ *
+ * Priorité :
+ * - token présent sur le canvas actif
+ * - token document de la scène du combat
+ */
+function getTokenForCombatant(combatant) {
+  if (!combatant?.tokenId) return null;
+
+  const activeToken = canvas?.tokens?.get(combatant.tokenId);
+  if (activeToken) return activeToken;
+
+  const sceneId =
+    combatant.sceneId ??
+    combatant.parent?.scene?.id ??
+    combatant.parent?.sceneId ??
+    null;
+
+  const scene = sceneId ? game.scenes?.get(sceneId) : null;
+  const tokenDocument = scene?.tokens?.get(combatant.tokenId) ?? null;
+
+  return tokenDocument?.object ?? tokenDocument ?? null;
+}
+
+/**
+ * Détermine si un combatant peut utiliser la logique
+ * d’initiative custom du système.
+ */
+function isD100InitiativeCombatant(combatant) {
+  return !!(
+    combatant &&
+    combatant.actor &&
+    typeof combatant.actor.rollInitiative === "function"
+  );
+}
+
+/**
+ * Résout une liste de combatants à partir :
+ * - de null => tous les combatants du combat
+ * - d’un id
+ * - d’un document combatant
+ * - d’une liste mixte
+ */
+function resolveCombatantsInCombat(combat, combatantsOrIds = null) {
+  if (!combat) return [];
+
+  if (combatantsOrIds == null) {
+    return Array.from(combat.combatants);
+  }
+
+  const entries = Array.isArray(combatantsOrIds)
+    ? combatantsOrIds
+    : [combatantsOrIds];
+
+  return entries
+    .map(entry => {
+      if (!entry) return null;
+      if (typeof entry === "string") return combat.combatants.get(entry) ?? null;
+      if (entry.id && combat.combatants.get(entry.id)) return combat.combatants.get(entry.id);
+      return null;
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Applique officiellement une initiative à un combatant.
+ * On passe par Combat.setInitiative pour laisser Foundry
+ * recalculer l’ordre des tours correctement.
+ */
+async function setCombatantInitiative(combatant, initiativeValue) {
+  if (!combatant) return false;
+
+  const combat = combatant.parent ?? game.combats?.active;
+  if (!combat) return false;
+
+  await combat.setInitiative(combatant.id, Number(initiativeValue ?? 0));
+  return true;
+}
+
+/**
+ * Lance l’initiative pour un combatant donné
+ * en réutilisant la logique d’acteur token-aware.
+ */
+async function rollCombatantInitiative(combatant) {
+  if (!isD100InitiativeCombatant(combatant)) return null;
+
+  const token = getTokenForCombatant(combatant);
+  return combatant.actor.rollInitiative({ token });
+}
+
+/**
+ * Lance l’initiative pour une liste de combatants.
+ * Accepte soit :
+ * - des ids de combatants,
+ * - des documents Combatant,
+ * - ou null => tous les combatants du combat actif
+ */
+async function rollCombatantInitiatives(combatants = null, { combat = null } = {}) {
+  const targetCombat = combat ?? game.combats?.active;
+  if (!targetCombat) {
+    ui.notifications?.warn("Aucun combat actif.");
+    return [];
+  }
+
+  const resolvedCombatants = resolveCombatantsInCombat(targetCombat, combatants);
+  const results = [];
+
+  for (const combatant of resolvedCombatants) {
+    const result = await rollCombatantInitiative(combatant);
+    results.push({
+      combatantId: combatant.id,
+      result
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Patch le flux standard Foundry d’initiative pour que
+ * tout appel à combat.rollInitiative(...) passe par
+ * la logique custom du système quand c’est applicable.
+ *
+ * C’est ce pont qui permet au carousel / tracker standard
+ * d’utiliser le jet d’initiative custom.
+ */
+function patchStandardCombatRollInitiative() {
+  if (d100BaseOriginalCombatRollInitiative) return;
+  if (!Combat?.prototype?.rollInitiative) return;
+
+  d100BaseOriginalCombatRollInitiative = Combat.prototype.rollInitiative;
+
+  Combat.prototype.rollInitiative = async function (ids, options = {}) {
+    const resolvedCombatants = resolveCombatantsInCombat(this, ids);
+
+    if (resolvedCombatants.length === 0) {
+      return d100BaseOriginalCombatRollInitiative.call(this, ids, options);
+    }
+
+    const customCombatants = [];
+    const fallbackCombatantIds = [];
+
+    for (const combatant of resolvedCombatants) {
+      if (isD100InitiativeCombatant(combatant)) {
+        customCombatants.push(combatant);
+      } else {
+        fallbackCombatantIds.push(combatant.id);
+      }
+    }
+
+    for (const combatant of customCombatants) {
+      await rollCombatantInitiative(combatant);
+    }
+
+    if (fallbackCombatantIds.length > 0) {
+      await d100BaseOriginalCombatRollInitiative.call(this, fallbackCombatantIds, options);
+    }
+
+    return this;
+  };
+
+  console.log("D100 Base | Patch Combat.rollInitiative activé");
+}
+
+/* ======================================================== */
+/* ================= ATTRIBUTE HUD ========================= */
+/* ======================================================== */
+
+function getSingleControlledD100Token() {
+  const controlled = canvas?.tokens?.controlled ?? [];
+
+  if (controlled.length !== 1) return null;
+
+  const [token] = controlled;
+
+  if (!token?.actor) return null;
+  if (token.actor.type !== "character") return null;
+
+  return token;
+}
+
+async function updateAttributeHudFromSelection() {
+  if (!d100AttributeHud) return;
+
+  const token = getSingleControlledD100Token();
+
+  if (!token) {
+    d100AttributeHud.clear();
+    return;
+  }
+
+  await d100AttributeHud.bind(token);
+}
+
+function requestAttributeHudSync() {
+  queueMicrotask(() => {
+    void updateAttributeHudFromSelection();
+  });
+}
+
+Hooks.on("controlToken", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("canvasReady", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("deleteToken", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("updateActor", (actor) => {
+  void d100AttributeHud?.refreshIfActor(actor);
+});
+
+Hooks.on("createItem", (item) => {
+  const actor = item?.parent instanceof Actor ? item.parent : null;
+  if (!actor) return;
+
+  scheduleActorInventoryRefresh(actor);
+});
+
+Hooks.on("updateItem", (item) => {
+  const actor = item?.parent instanceof Actor ? item.parent : null;
+  if (!actor) return;
+
+  scheduleActorInventoryRefresh(actor);
+});
+
+Hooks.on("deleteItem", (item) => {
+  const actor = item?.parent instanceof Actor ? item.parent : null;
+  if (!actor) return;
+
+  scheduleActorInventoryRefresh(actor);
+});
+
+Hooks.on("updateCombat", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("createCombatant", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("deleteCombatant", () => {
+  requestAttributeHudSync();
+});
+
+Hooks.on("canvasTearDown", () => {
+  d100AttributeHud?.clear();
+});
+
+/* ======================================================== */
+/* ============== INVENTORY SHEET REFRESH ================== */
+/* ======================================================== */
+
+function getActorSheetApp(actor) {
+  return actor?.sheet ?? null;
+}
+
+function getOwnedItemSheetApps(actor) {
+  if (!actor) return [];
+
+  return actor.items
+    .map(item => item?.sheet ?? null)
+    .filter(sheet => sheet?.rendered);
+}
+
+function renderActorInventoryRelatedSheets(actor) {
+  if (!actor) return;
+
+  const actorSheet = getActorSheetApp(actor);
+  if (actorSheet?.rendered) {
+    actorSheet.render(false);
+  }
+
+  for (const itemSheet of getOwnedItemSheetApps(actor)) {
+    itemSheet.render(false);
+  }
+}
+
+function scheduleActorInventoryRefresh(actor, delay = 40) {
+  if (!actor?.id) return;
+
+  const existing = d100PendingInventoryRenders.get(actor.id);
+  if (existing) {
+    clearTimeout(existing);
+  }
+
+  const timeoutId = setTimeout(() => {
+    d100PendingInventoryRenders.delete(actor.id);
+    renderActorInventoryRelatedSheets(actor);
+  }, delay);
+
+  d100PendingInventoryRenders.set(actor.id, timeoutId);
+}
 
 /* ======================================================== */
 /* ======================= MIGRATION ======================= */

@@ -54,7 +54,7 @@
     <div
       class="item-extract"
       data-item-id="{{node.id}}"
-      title="Sortir du conteneur"
+      title="{{localize "D100BASE.Inventory.Extract"}}"
     >
       🡅
     </div>
@@ -62,10 +62,21 @@
     <div class="item-action-spacer"></div>
   {{/if}}
 
+  <button
+    type="button"
+    class="item-transfer"
+    data-action="transfer-item"
+    data-item-id="{{node.id}}"
+    title="{{localize "D100BASE.Inventory.TransferButton"}}"
+    aria-label="{{localize "D100BASE.Inventory.TransferButton"}}"
+  >
+    ⇄
+  </button>
+
   <div
     class="item-delete"
     data-item-id="{{node.id}}"
-    title="Supprimer"
+    title="{{localize "D100BASE.Inventory.Delete"}}"
   >
     ✖
   </div>

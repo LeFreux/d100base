@@ -29,6 +29,15 @@ export class D100ItemSheet extends ItemSheet {
     return this.isOwnedItem && !!this.item.system?.isContainer;
   }
 
+  _getPermissionContext() {
+    return {
+      isOwner: this.item.isOwner,
+      isObserver: !this.item.isOwner && this.item.testUserPermission(game.user, "OBSERVER"),
+      isLimited: this.item.limited,
+      isEditable: this.isEditable
+    };
+  }
+
   _getCategories() {
     return [
       { value: "Arme", label: "Arme" },
@@ -61,9 +70,9 @@ export class D100ItemSheet extends ItemSheet {
    */
   _getStandaloneWeightState() {
     const system = this.item.system;
-	const quantity = system.isContainer
-	  ? 1
-	  : Math.max(0, Number(system.quantity ?? 1));
+    const quantity = system.isContainer
+      ? 1
+      : Math.max(0, Number(system.quantity ?? 1));
     const unitWeight = Math.max(0, Number(system.unitWeight ?? 0));
     const emptyWeight = Math.max(0, Number(system.emptyWeight ?? 0));
     const capacityWeight = Math.max(0, Number(system.capacityWeight ?? 0));
@@ -204,13 +213,13 @@ export class D100ItemSheet extends ItemSheet {
 
     if (targetItem && draggedItem.id === targetItem.id) return;
 
-	const targetContainerId = this._resolveDropTargetContainerId(targetItem);
+    const targetContainerId = this._resolveDropTargetContainerId(targetItem);
 
-	await this.actor.tryStackOrMoveItem(
-	  draggedItem.id,
-	  targetItem?.id ?? null,
-	  targetContainerId
-	);
+    await this.actor.tryStackOrMoveItem(
+      draggedItem.id,
+      targetItem?.id ?? null,
+      targetContainerId
+    );
   }
 
   /* ===================================== */
@@ -222,6 +231,7 @@ export class D100ItemSheet extends ItemSheet {
 
     context.system = this.item.system;
     context.categories = this._getCategories();
+    context.permissions = this._getPermissionContext();
 
     context.isOwnedItem = this.isOwnedItem;
     context.isOwnedContainer = this.isOwnedContainer;
@@ -320,22 +330,22 @@ export class D100ItemSheet extends ItemSheet {
      * - si l’item est possédé et contient encore des items, confirmation
      *   puis extraction préalable de tous les enfants pour éviter toute incohérence
      */
-	html.find('input[name="system.isContainer"]').change(async ev => {
-	  const checked = ev.currentTarget.checked;
+    html.find('input[name="system.isContainer"]').change(async ev => {
+      const checked = ev.currentTarget.checked;
 
-	  if (checked) {
-		await this.item.update({
-		  "system.isContainer": true,
-		  "system.quantity": 1
-		});
-		await this._recalculateWeightFromForm(html);
-		return;
-	  }
+      if (checked) {
+        await this.item.update({
+          "system.isContainer": true,
+          "system.quantity": 1
+        });
+        await this._recalculateWeightFromForm(html);
+        return;
+      }
 
-	  if (!this.isOwnedContainer) {
-		await this.item.update({ "system.isContainer": false });
-		return;
-	  }
+      if (!this.isOwnedContainer) {
+        await this.item.update({ "system.isContainer": false });
+        return;
+      }
 
       const children = this.actor.getContainerChildren(this.item.id);
 
@@ -394,19 +404,19 @@ export class D100ItemSheet extends ItemSheet {
      * Modification de quantité d’un enfant réel.
      */
     html.find(".item-qty").change(async ev => {
-	  if (!this.actor) return;
+      if (!this.actor) return;
 
-	  const id = this._getItemIdFromEventTarget(ev.currentTarget);
-	  if (!id) return;
+      const id = this._getItemIdFromEventTarget(ev.currentTarget);
+      if (!id) return;
 
-	  const value = Math.max(0, Math.floor(Number(ev.currentTarget.value) || 0));
-	  await this.actor.updateInventoryItemQuantity(id, value);
+      const value = Math.max(0, Math.floor(Number(ev.currentTarget.value) || 0));
+      await this.actor.updateInventoryItemQuantity(id, value);
 
-	  const item = this.actor.getInventoryItem(id);
-	  if (item?.system?.isContainer) {
-		ev.currentTarget.value = 1;
-	  }
-	});
+      const item = this.actor.getInventoryItem(id);
+      if (item?.system?.isContainer) {
+        ev.currentTarget.value = 1;
+      }
+    });
 
     /**
      * Suppression d’un enfant réel.
@@ -454,30 +464,30 @@ export class D100ItemSheet extends ItemSheet {
       li?.classList.add("dragging");
     });
 
-	html.find(".drag-handle").on("dragend", ev => {
-	  const li = ev.currentTarget.closest(".item");
-	  li?.classList.remove("dragging");
+    html.find(".drag-handle").on("dragend", ev => {
+      const li = ev.currentTarget.closest(".item");
+      li?.classList.remove("dragging");
 
-	  html.find(".inventory-list .item.dragover").removeClass("dragover");
-	  html.find(".container-contents-runtime.dragover").removeClass("dragover");
-	});
+      html.find(".inventory-list .item.dragover").removeClass("dragover");
+      html.find(".container-contents-runtime.dragover").removeClass("dragover");
+    });
 
     /**
      * Drag over / leave sur les lignes runtime.
      */
-	html.find(".inventory-list .item").on("dragover", ev => {
-	  ev.preventDefault();
-	  ev.currentTarget.classList.add("dragover");
-	});
+    html.find(".inventory-list .item").on("dragover", ev => {
+      ev.preventDefault();
+      ev.currentTarget.classList.add("dragover");
+    });
 
-	html.find(".inventory-list .item").on("dragleave", ev => {
-	  ev.currentTarget.classList.remove("dragover");
-	});
+    html.find(".inventory-list .item").on("dragleave", ev => {
+      ev.currentTarget.classList.remove("dragover");
+    });
 
-	html.find(".inventory-list .item").on("drop", async ev => {
-	  ev.currentTarget.classList.remove("dragover");
-	  await this._handleRuntimeContainerDrop(ev);
-	});
+    html.find(".inventory-list .item").on("drop", async ev => {
+      ev.currentTarget.classList.remove("dragover");
+      await this._handleRuntimeContainerDrop(ev);
+    });
 
     /**
      * Drop sur le fond de la vue de contenu :

@@ -35,6 +35,10 @@ export class D100ActorSheet extends ActorSheet {
       ]
     });
   }
+  
+  get title() {
+    return this.actor?.name ?? super.title;
+  }
 
   /* ===================================== */
   /* DATA                                  */
@@ -44,6 +48,13 @@ export class D100ActorSheet extends ActorSheet {
     const data = await super.getData();
 
     data.system = this.actor.system;
+
+    data.permissions = {
+      isOwner: this.actor.isOwner,
+      isObserver: !this.actor.isOwner && this.actor.testUserPermission(game.user, "OBSERVER"),
+      isLimited: this.actor.limited,
+      isEditable: this.isEditable
+    };
 
     data.config = {
       attributes: {
@@ -334,6 +345,43 @@ export class D100ActorSheet extends ActorSheet {
     });
   }
   
+  async openStateTab() {
+    await this.render(true);
+
+    if (this._tabs?.[0]?.activate) {
+      this._tabs[0].activate("state");
+      return;
+    }
+
+    const nav = this.element?.find('.sheet-tabs.tabs [data-tab="state"]');
+    if (nav?.length) nav[0].click();
+  }
+
+  /* ===================================== */
+  /* LOCALISATION UI                       */
+  /* ===================================== */
+
+  _localize(key, fallback = "") {
+    const localized = game.i18n?.localize?.(key);
+    if (localized && localized !== key) return localized;
+    return fallback || key;
+  }
+
+  _format(key, data = {}, fallback = "") {
+    const formatted = game.i18n?.format?.(key, data);
+    if (formatted && formatted !== key) return formatted;
+    return fallback || key;
+  }
+
+  _escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+  
   /* ===================================== */
   /* BLESSURES LOCALISÉES - DATA           */
   /* ===================================== */
@@ -516,8 +564,105 @@ export class D100ActorSheet extends ActorSheet {
   /* HELPERS UI                            */
   /* ===================================== */
 
+  /**
+   * Tente de retrouver le token contexte de la fiche.
+   *
+   * Priorité :
+   * 1. acteur synthétique / token actor
+   * 2. un unique token contrôlé correspondant à cet acteur
+   * 3. null si ambigu ou absent
+   */
+  _getInitiativeTokenContext() {
+    const syntheticToken = this.actor?.token?.object ?? this.actor?.token ?? null;
+    if (syntheticToken) {
+      return syntheticToken;
+    }
+
+    const controlled = canvas?.tokens?.controlled ?? [];
+    const matching = controlled.filter(token => token?.actor?.id === this.actor.id);
+
+    if (matching.length === 1) {
+      return matching[0];
+    }
+
+    return null;
+  }
+
+  _getTransferSourceTokenContext() {
+    return this._getInitiativeTokenContext();
+  }
+
+  _hasMinimumTransferPermission(actor, minimumLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {
+    if (!actor || !game.user) return false;
+    return actor.testUserPermission(game.user, minimumLevel);
+  }
+
+  _getSceneTokensForActor(actor) {
+    const placeables = canvas?.tokens?.placeables ?? [];
+    return placeables.filter(token => token?.actor?.id === actor.id);
+  }
+
+  _isTokenVisibleForTransfer(sourceToken, targetToken) {
+    if (!sourceToken || !targetToken) return false;
+    if (sourceToken.id === targetToken.id) return false;
+
+    if (!targetToken.visible) return false;
+
+    // Version simple et robuste :
+    // on considère visible si le token cible est actuellement visible pour l'utilisateur.
+    // Plus tard, on pourra raffiner vers une vraie vérification LOS / perception.
+    return true;
+  }
+
+  _canActorBeTransferTargetFromSourceToken(actor, sourceToken, minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {
+    if (!actor || !sourceToken) return false;
+    if (actor.id === this.actor.id) return false;
+
+    if (!this._hasMinimumTransferPermission(actor, minimumPermissionLevel)) {
+      return false;
+    }
+
+    const sceneTokens = this._getSceneTokensForActor(actor);
+    if (!sceneTokens.length) return false;
+
+    return sceneTokens.some(targetToken => this._isTokenVisibleForTransfer(sourceToken, targetToken));
+  }
+
   _getItemIdFromEventTarget(target) {
     return target?.closest?.(".item")?.dataset?.itemId ?? null;
+  }
+
+  _getTransferableItemFromEventTarget(target) {
+    const itemId = this._getItemIdFromEventTarget(target);
+    if (!itemId) return null;
+
+    const item = this.actor.getInventoryItem(itemId);
+    if (!item) return null;
+
+    return item;
+  }
+
+  _getAvailableTransferTargets() {
+    const sourceToken = this._getTransferSourceTokenContext();
+
+    if (!sourceToken) {
+      return [];
+    }
+
+    return game.actors
+      .filter(actor => actor?.id && actor.id !== this.actor.id)
+      .filter(actor => actor.type === this.actor.type)
+      .filter(actor => this._canActorBeTransferTargetFromSourceToken(
+        actor,
+        sourceToken,
+        CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED		// Échange uniquement avec acteur dont le joueur possède à minima droits "Limité"
+      ));
+  }
+
+  _buildTransferTargetOptionsHtml(targetActors = []) {
+    return targetActors
+      .map(actor => `<option value="${actor.id}">${this._escapeHtml(actor.name || actor.id)}</option>`)
+      .join("");
   }
 
   _getDraggedItemIdFromEvent(event) {
@@ -543,6 +688,194 @@ export class D100ActorSheet extends ActorSheet {
     }
 
     return this._sortState.direction === "asc" ? "▲" : "▼";
+  }
+
+  async _openTransferInventoryDialog(item) {
+    if (!this.isEditable || !item) return false;
+
+    const sourceToken = this._getTransferSourceTokenContext();
+    if (!sourceToken) {
+      ui.notifications?.warn(
+        this._localize(
+          "D100BASE.Inventory.NoTransferSourceToken",
+          "Aucun token source valide n’est disponible pour ce transfert."
+        )
+      );
+      return false;
+    }
+
+    const targetActors = this._getAvailableTransferTargets();
+
+    if (!targetActors.length) {
+      ui.notifications?.warn(
+        this._localize(
+          "D100BASE.Inventory.NoTransferTarget",
+          "Aucun acteur cible visible et autorisé n’est disponible pour ce transfert."
+        )
+      );
+      return false;
+    }
+
+    const content = `
+      <form class="inventory-transfer-dialog">
+        <div class="form-group">
+          <label>Objet transféré</label>
+          <input type="text" value="${this._escapeHtml(item.name || item.id)}" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Acteur cible visible</label>
+          <select name="target-actor-id">
+            ${this._buildTransferTargetOptionsHtml(targetActors)}
+          </select>
+        </div>
+      </form>
+    `;
+
+    return new Promise(resolve => {
+      new Dialog({
+        title: this._localize("D100BASE.Inventory.TransferTitle", "Transférer un objet"),
+        content,
+        buttons: {
+          transfer: {
+            icon: '<i class="fas fa-share"></i>',
+            label: this._localize("D100BASE.Inventory.TransferButton", "Transférer"),
+            callback: async html => {
+              const targetActorId = String(html.find('[name="target-actor-id"]').val() ?? "").trim();
+              if (!targetActorId) {
+                ui.notifications?.warn(
+                  this._localize("D100BASE.Inventory.NoTransferTargetSelected", "Aucun acteur cible sélectionné.")
+                );
+                resolve(false);
+                return;
+              }
+
+              const targetActor = game.actors.get(targetActorId);
+              if (!targetActor) {
+                ui.notifications?.warn(
+                  this._localize("D100BASE.Inventory.TransferTargetNotFound", "Acteur cible introuvable.")
+                );
+                resolve(false);
+                return;
+              }
+
+              const sourceToken = this._getTransferSourceTokenContext();
+
+              const result = await this.actor.transferInventoryItemToActorRoot(
+                item.id,
+                targetActor,
+                { sourceToken }
+              );
+
+              if (!result?.success) {
+                resolve(false);
+                return;
+              }
+
+              ui.notifications?.info(
+                this._format(
+                  "D100BASE.Inventory.TransferSuccess",
+                  { actor: targetActor.name },
+                  `Transfert effectué vers ${targetActor.name}.`
+                )
+              );
+              resolve(true);
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: game.i18n.localize("D100BASE.Common.Cancel"),
+            callback: () => resolve(false)
+          }
+        },
+        default: "transfer",
+        render: html => {
+          html.find('[name="target-actor-id"]').trigger("focus");
+        },
+        close: () => resolve(false)
+      }).render(true);
+    });
+  }
+
+  async _onTransferInventoryItem(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const item = this._getTransferableItemFromEventTarget(event.currentTarget);
+    if (!item) return false;
+
+    return this._openTransferInventoryDialog(item);
+  }
+
+  /* ===================================== */
+  /* DIALOG OPTIONS DE JET                 */
+  /* ===================================== */
+
+  async _openRollOptionsDialog() {
+    const content = `
+      <form class="d100base-roll-options-dialog">
+        <div class="form-group">
+          <label>Bonus / Malus</label>
+          <input type="number" name="modifier" value="0" step="1">
+          <p class="notes">
+            Bonus = abaisse la cible, malus = augmente la cible.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label>Mode</label>
+          <select name="mode">
+            <option value="normal">Normal</option>
+            <option value="advantage">Avantage</option>
+            <option value="disadvantage">Désavantage</option>
+          </select>
+        </div>
+      </form>
+    `;
+
+    return new Promise(resolve => {
+      new Dialog({
+        title: "Options de jet",
+        content,
+        buttons: {
+          confirm: {
+            icon: '<i class="fas fa-check"></i>',
+            label: game.i18n.localize("D100BASE.Common.Save"),
+            callback: html => {
+              const modifier = Number(html.find('[name="modifier"]').val() ?? 0) || 0;
+              const mode = String(html.find('[name="mode"]').val() ?? "normal");
+
+              resolve({
+                modifier,
+                mode
+              });
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: game.i18n.localize("D100BASE.Common.Cancel"),
+            callback: () => resolve(null)
+          }
+        },
+        default: "confirm",
+        render: html => {
+          html.find('[name="modifier"]').trigger("focus");
+          html.find('[name="modifier"]').trigger("select");
+        },
+        close: () => resolve(null)
+      }).render(true);
+    });
+  }
+
+  async _resolveRollOptionsFromEvent(event) {
+    if (!event?.ctrlKey) {
+      return {
+        modifier: 0,
+        mode: "normal"
+      };
+    }
+
+    return this._openRollOptionsDialog();
   }
 
   /* ===================================== */
@@ -650,6 +983,9 @@ export class D100ActorSheet extends ActorSheet {
     if (!draggedId || !targetItem) return;
 
     const draggedItem = this.actor.getInventoryItem(draggedId);
+
+    // On ignore ici tout drop externe : cette méthode reste réservée
+    // au drag & drop interne de l'inventaire de l'acteur courant.
     if (!draggedItem) return;
     if (draggedItem.id === targetItem.id) return;
 
@@ -661,20 +997,60 @@ export class D100ActorSheet extends ActorSheet {
       targetContainerId
     );
   }
+  
+  async _onRollInitiative(event) {
+    event.preventDefault();
+
+    const button = event.currentTarget;
+    if (!button) return;
+
+    const options = await this._resolveRollOptionsFromEvent(event);
+    if (!options) return;
+
+    button.disabled = true;
+
+    try {
+      const tokenContext = this._getInitiativeTokenContext();
+
+      await this.actor.rollInitiative({
+        token: tokenContext,
+        modifier: options.modifier,
+        mode: options.mode
+      });
+    } catch (err) {
+      console.error("D100 Base | Erreur lancement initiative depuis la fiche acteur", err);
+      ui.notifications?.error("Erreur pendant le lancement de l’initiative. Consulte la console.");
+    } finally {
+      button.disabled = false;
+    }
+  }
 
   /* ===================================== */
   /* LISTENERS                             */
   /* ===================================== */
 
-    activateListeners(html) {
+  activateListeners(html) {
     super.activateListeners(html);
 
     this._initializeAptitudeCards(html);
 
     /* ROLL */
-    html.find("[data-roll]").click(ev => {
+    html.find("[data-roll]").click(async ev => {
       const key = ev.currentTarget.dataset.roll;
-      this.actor.rollAttribute(key);
+      if (!key) return;
+
+      const options = await this._resolveRollOptionsFromEvent(ev);
+      if (!options) return;
+
+      await this.actor.rollAttribute(key, {
+        modifier: options.modifier,
+        mode: options.mode
+      });
+    });
+	
+    /* INITIATIVE */
+    html.find('[data-action="roll-initiative"]').click(async ev => {
+      await this._onRollInitiative(ev);
     });
 
     /* TOGGLE PORTRAIT / TOKEN */
@@ -695,7 +1071,7 @@ export class D100ActorSheet extends ActorSheet {
 	/* EDIT APTITUDE */
 	html.on("click", ".aptitude-card-edit", ev => {
 	  ev.preventDefault();
-	  ev.stopPropagation(); // 🔥 important pour ne pas toggle
+	  ev.stopPropagation();
 
 	  const id = ev.currentTarget.dataset.aptitudeId;
 	  this._openEditAptitudeDialog(id);
@@ -782,6 +1158,11 @@ export class D100ActorSheet extends ActorSheet {
       await this.actor.extractItemFromContainer(id);
     });
 
+    /* TRANSFER */
+    html.find('[data-action="transfer-item"]').click(async ev => {
+      await this._onTransferInventoryItem(ev);
+    });
+
     /* SORT */
     html.find(".sortable").click(ev => {
       const field = ev.currentTarget.dataset.sort;
@@ -815,14 +1196,18 @@ export class D100ActorSheet extends ActorSheet {
     /* DRAG OVER */
     html.find(inventoryItemSelector).on("dragover", ev => {
       ev.preventDefault();
+      ev.stopPropagation();
       ev.currentTarget.classList.add("dragover");
     });
 
     html.find(inventoryItemSelector).on("dragleave", ev => {
+      ev.stopPropagation();
       ev.currentTarget.classList.remove("dragover");
     });
 
     html.find(inventoryItemSelector).on("drop", async ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
       ev.currentTarget.classList.remove("dragover");
       await this._handleInventoryDrop(ev);
     });

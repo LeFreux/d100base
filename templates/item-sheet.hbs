@@ -1,190 +1,210 @@
 <form class="sheet-body">
 
-  <header class="item-header">
+  {{#if permissions.isLimited}}
 
-    <img
-      class="item-icon"
-      src="{{item.img}}"
-      data-edit="img"
-      alt="{{item.name}}">
+    <header class="item-header item-header-limited">
 
-    <div class="item-header-fields">
+      <img
+        class="item-icon"
+        src="{{item.img}}"
+        alt="{{item.name}}">
 
-      <input
-        class="item-name"
-        name="name"
-        type="text"
-        value="{{item.name}}">
-
-      <div class="item-secondary-fields">
-
-        <div class="secondary-row">
-
-          <label>
-            Poids unitaire
-            <input
-              type="number"
-              name="system.unitWeight"
-              value="{{system.unitWeight}}"
-              {{#if system.isContainer}}readonly{{/if}}>
-          </label>
-
-		  <label>
-		    Quantité
-		    <input
-			  type="number"
-			  name="system.quantity"
-			  value="{{system.quantity}}"
-			  {{#if system.isContainer}}readonly{{/if}}>
-		  </label>
-
-          <label>
-            Poids total
-            <input
-              type="number"
-              name="system.weight"
-              value="{{totalWeight}}"
-              readonly>
-          </label>
-
-        </div>
-
-		<div class="secondary-row type-row">
-
-		  <div class="type-block">
-			<label>Type</label>
-			<select name="system.category">
-			  {{selectOptions categories selected=system.category labelAttr="label" valueAttr="value"}}
-			</select>
-		  </div>
-
-		  <div class="container-block">
-			<label>
-			  <input
-				type="checkbox"
-				name="system.isContainer"
-				{{checked system.isContainer}}>
-			  Conteneur
-			</label>
-		  </div>
-
-		</div>
-
-        {{#if system.isContainer}}
-        <div class="secondary-row">
-
-          <section class="item-properties">
-
-            <label>
-              Poids (vide)
-              <input
-                type="number"
-                name="system.emptyWeight"
-                value="{{system.emptyWeight}}">
-            </label>
-
-            <label>
-              Capacité max
-              <input
-                type="number"
-                name="system.capacityWeight"
-                value="{{system.capacityWeight}}">
-            </label>
-
-            <label>
-              Poids du contenu
-              <input
-                type="number"
-                value="{{contentWeight}}"
-                readonly>
-            </label>
-
-            <label class="{{#if overweight}}overweight{{/if}}">
-              État
-              <input
-                type="text"
-                value="{{#if overweight}}Surchargé{{else}}OK{{/if}}"
-                readonly>
-            </label>
-
-          </section>
-
-        </div>
-        {{/if}}
-
+      <div class="item-header-fields">
+        <div class="item-name limited-item-name">{{item.name}}</div>
       </div>
 
-    </div>
+    </header>
 
-  </header>
+  {{else}}
 
-  {{#if system.isContainer}}
+    <header class="item-header">
 
-    {{#if isOwnedContainer}}
+      <img
+        class="item-icon"
+        src="{{item.img}}"
+        data-edit="img"
+        alt="{{item.name}}">
 
-    <h2>Contenu réel</h2>
+      <div class="item-header-fields">
 
-    <div class="container-total-weight {{#if overweight}}overweight{{/if}}">
-      <span>Poids du contenu : {{formatNumberClean contentWeight}} kg</span>
+        <input
+          class="item-name"
+          name="name"
+          type="text"
+          value="{{item.name}}">
 
-      {{#if capacityWeight}}
-      <span> / {{formatNumberClean capacityWeight}} kg max</span>
-      {{/if}}
-    </div>
+        <div class="item-secondary-fields">
 
-    <div class="container-contents-runtime">
+          <div class="secondary-row">
 
-      <div class="inventory-scroll">
+            <label>
+              Poids unitaire
+              <input
+                type="number"
+                name="system.unitWeight"
+                value="{{system.unitWeight}}"
+                {{#if system.isContainer}}readonly{{/if}}>
+            </label>
 
-        <ul class="inventory-list">
+            <label>
+              Quantité
+              <input
+                type="number"
+                name="system.quantity"
+                value="{{system.quantity}}"
+                {{#if system.isContainer}}readonly{{/if}}>
+            </label>
 
-		  <li class="inventory-header">
-		    <span>Nom</span>
-		    <span>Type</span>
-		    <span>Qté</span>
-		    <span>Poids (kg)</span>
-		    <span></span>
-		    <span></span>
-		  </li>
+            <label>
+              Poids total
+              <input
+                type="number"
+                name="system.weight"
+                value="{{totalWeight}}"
+                readonly>
+            </label>
 
-          {{#if containerTree.length}}
-            {{#each containerTree}}
-              {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
-            {{/each}}
-          {{else}}
-            <li class="empty-container-row">
-              <span>Ce conteneur est vide.</span>
-            </li>
+          </div>
+
+          <div class="secondary-row type-row">
+
+            <div class="type-block">
+              <label>Type</label>
+              <select name="system.category">
+                {{selectOptions categories selected=system.category labelAttr="label" valueAttr="value"}}
+              </select>
+            </div>
+
+            <div class="container-block">
+              <label>
+                <input
+                  type="checkbox"
+                  name="system.isContainer"
+                  {{checked system.isContainer}}>
+                Conteneur
+              </label>
+            </div>
+
+          </div>
+
+          {{#if system.isContainer}}
+          <div class="secondary-row">
+
+            <section class="item-properties">
+
+              <label>
+                Poids (vide)
+                <input
+                  type="number"
+                  name="system.emptyWeight"
+                  value="{{system.emptyWeight}}">
+              </label>
+
+              <label>
+                Capacité max
+                <input
+                  type="number"
+                  name="system.capacityWeight"
+                  value="{{system.capacityWeight}}">
+              </label>
+
+              <label>
+                Poids du contenu
+                <input
+                  type="number"
+                  value="{{contentWeight}}"
+                  readonly>
+              </label>
+
+              <label class="{{#if overweight}}overweight{{/if}}">
+                État
+                <input
+                  type="text"
+                  value="{{#if overweight}}Surchargé{{else}}OK{{/if}}"
+                  readonly>
+              </label>
+
+            </section>
+
+          </div>
           {{/if}}
 
-        </ul>
+        </div>
 
       </div>
 
-    </div>
+    </header>
 
-    {{else}}
+    {{#if system.isContainer}}
 
-    <h2>Conteneur</h2>
+      {{#if isOwnedContainer}}
 
-    <div class="container-total-weight">
-      <span>Poids vide : {{formatNumberClean system.emptyWeight}} kg</span>
+      <h2>Contenu réel</h2>
 
-      {{#if system.capacityWeight}}
-      <span> / Capacité max : {{formatNumberClean system.capacityWeight}} kg</span>
+      <div class="container-total-weight {{#if overweight}}overweight{{/if}}">
+        <span>Poids du contenu : {{formatNumberClean contentWeight}} kg</span>
+
+        {{#if capacityWeight}}
+        <span> / {{formatNumberClean capacityWeight}} kg max</span>
+        {{/if}}
+      </div>
+
+      <div class="container-contents-runtime">
+
+        <div class="inventory-scroll">
+
+          <ul class="inventory-list">
+
+            <li class="inventory-header">
+              <span>Nom</span>
+              <span>Type</span>
+              <span>Qté</span>
+              <span>Poids (kg)</span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </li>
+
+            {{#if containerTree.length}}
+              {{#each containerTree}}
+                {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
+              {{/each}}
+            {{else}}
+              <li class="empty-container-row">
+                <span>Ce conteneur est vide.</span>
+              </li>
+            {{/if}}
+
+          </ul>
+
+        </div>
+
+      </div>
+
+      {{else}}
+
+      <h2>Conteneur</h2>
+
+      <div class="container-total-weight">
+        <span>Poids vide : {{formatNumberClean system.emptyWeight}} kg</span>
+
+        {{#if system.capacityWeight}}
+        <span> / Capacité max : {{formatNumberClean system.capacityWeight}} kg</span>
+        {{/if}}
+      </div>
+
+      <p class="container-hint">
+        Le contenu réel n’est visible que lorsque ce conteneur est possédé par un acteur.
+      </p>
+
       {{/if}}
-    </div>
-
-    <p class="container-hint">
-      Le contenu réel n’est visible que lorsque ce conteneur est possédé par un acteur.
-    </p>
 
     {{/if}}
 
+    <h2>Description</h2>
+
+    <textarea name="system.description">{{system.description}}</textarea>
+
   {{/if}}
-
-  <h2>Description</h2>
-
-  <textarea name="system.description">{{system.description}}</textarea>
 
 </form>

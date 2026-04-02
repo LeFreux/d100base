@@ -1,279 +1,334 @@
 <form class="sheet-container">
 
-  <!-- ================= TABS ================= -->
-  <nav class="sheet-tabs tabs" data-group="primary">
-    <a class="item tab-main active" data-tab="main" title="Principal"></a>
-    <a class="item tab-details" data-tab="details" title="Profil"></a>
-    <a class="item tab-journal" data-tab="journal" title="Notes"></a>
-    <a class="item tab-state" data-tab="state" title="État & Équipement"></a>
-  </nav>
+  {{#if permissions.isLimited}}
 
-  <!-- ================= CONTENT ================= -->
-  <section class="sheet-content">
-
-    <!-- ================= MAIN ================= -->
-    <div class="tab active" data-group="primary" data-tab="main">
-
-      <div class="sheet-body actor-layout">
+    <section class="sheet-content limited-sheet-content">
+      <div class="sheet-body actor-limited-layout">
 
         <!-- ================= PORTRAIT ================= -->
-        <section class="portrait-panel">
+        <section class="portrait-panel limited-portrait-panel">
 
           <h2 class="portrait-header">
             {{#if showToken}}Token{{else}}Portrait{{/if}}
-
-            <button
-              type="button"
-              class="toggle-portrait {{#if showToken}}active{{/if}}"
-              title="Basculer Portrait / Token"
-            ></button>
           </h2>
 
           <img
             class="{{#if showToken}}token-view{{else}}portrait-view{{/if}}"
             src="{{#if showToken}}{{tokenImg}}{{else}}{{actor.img}}{{/if}}"
-            {{#unless showToken}}data-edit="img"{{/unless}}
             alt="{{actor.name}}"
           />
 
         </section>
 
         <!-- ================= NOM ================= -->
-        <section class="name-panel">
-          <label>Nom</label>
-          <input type="text" name="name" value="{{actor.name}}">
+        <section class="name-panel limited-name-panel">
+          <label>{{localize "D100BASE.Actor.Name"}}</label>
+          <div class="limited-actor-name">{{actor.name}}</div>
         </section>
 
-        <!-- ================= ETAT GENERAL ================= -->
-        <section class="injury-panel">
-          <label>État général</label>
-          <select name="system.injuryState">
-            <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>Indemne</option>
-            <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>Légèrement blessé</option>
-            <option value="blesse" {{#if (eq system.injuryState "blesse")}}selected{{/if}}>Blessé</option>
-            <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>Gravement blessé</option>
-            <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>Mourant</option>
-            <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>Inconscient</option>
-          </select>
-        </section>
+      </div>
+    </section>
 
-        <!-- ================= ATTRIBUTS ================= -->
-        <section class="attributes-panel">
-          <h2>Caractéristiques</h2>
+  {{else}}
 
-          <div class="attributes-row">
-            {{#each system.attributes}}
-              <div class="attribute-card">
+    <!-- ================= TABS ================= -->
+    <nav class="sheet-tabs tabs" data-group="primary">
+      <a class="item tab-main active" data-tab="main" title="Principal"></a>
+      <a class="item tab-details" data-tab="details" title="Profil"></a>
+      <a class="item tab-journal" data-tab="journal" title="Notes"></a>
+      <a class="item tab-state" data-tab="state" title="État & Équipement"></a>
+    </nav>
 
-                <span
-                  class="attribute-name"
-                  title="{{localize (concat "D100BASE.Attributes." @key)}}"
-                >
-                  {{lookup ../config.attributesShort @key}}
-                </span>
+    <!-- ================= CONTENT ================= -->
+    <section class="sheet-content">
 
-                <input
-                  class="attribute-input"
-                  type="number"
-                  name="system.attributes.{{@key}}"
-                  value="{{this}}"
-                  min="0"
-                  max="999">
+      <!-- ================= MAIN ================= -->
+      <div class="tab active" data-group="primary" data-tab="main">
 
-                <button
-                  class="attribute-roll"
-                  type="button"
-                  data-roll="{{@key}}"
-                  title="Jet {{localize (concat "D100BASE.Attributes." @key)}}"
-                ></button>
+        <div class="sheet-body actor-layout">
 
-              </div>
-            {{/each}}
+          <!-- ================= PORTRAIT ================= -->
+          <section class="portrait-panel">
+
+            <h2 class="portrait-header">
+              {{#if showToken}}Token{{else}}Portrait{{/if}}
+
+              <button
+                type="button"
+                class="toggle-portrait {{#if showToken}}active{{/if}}"
+                title="Basculer Portrait / Token"
+              ></button>
+            </h2>
+
+            <img
+              class="{{#if showToken}}token-view{{else}}portrait-view{{/if}}"
+              src="{{#if showToken}}{{tokenImg}}{{else}}{{actor.img}}{{/if}}"
+              {{#unless showToken}}data-edit="img"{{/unless}}
+              alt="{{actor.name}}"
+            />
+
+          </section>
+
+          <!-- ================= NOM ================= -->
+          <section class="name-panel">
+            <label>{{localize "D100BASE.Actor.Name"}}</label>
+            <input
+              class="actor-name-input"
+              type="text"
+              name="name"
+              value="{{actor.name}}"
+            >
+          </section>
+
+          <!-- ================= INITIATIVE ================= -->
+          <section class="initiative-panel">
+            <label>{{localize "D100BASE.Initiative.Button"}}</label>
+
+            <button
+              type="button"
+              class="initiative-roll-button"
+              data-action="roll-initiative"
+              title="{{localize "D100BASE.Initiative.RollTitle"}}"
+              aria-label="{{localize "D100BASE.Initiative.RollTitle"}}"
+            >
+              <span class="initiative-roll-button-icon" aria-hidden="true"></span>
+              <span class="initiative-roll-button-label">{{localize "D100BASE.Initiative.Button"}}</span>
+            </button>
+          </section>
+
+          <!-- ================= ETAT GENERAL ================= -->
+          <section class="injury-panel">
+            <label>{{localize "D100BASE.Actor.GeneralInjuryState"}}</label>
+            <select name="system.injuryState">
+              <option value="indemne" {{#if (eq system.injuryState "indemne")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.indemne"}}</option>
+              <option value="legerement-blesse" {{#if (eq system.injuryState "legerement-blesse")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.legerement-blesse"}}</option>
+              <option value="blesse" {{#if (eq system.injuryState "blesse")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.blesse"}}</option>
+              <option value="gravement-blesse" {{#if (eq system.injuryState "gravement-blesse")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.gravement-blesse"}}</option>
+              <option value="mourant" {{#if (eq system.injuryState "mourant")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.mourant"}}</option>
+              <option value="inconscient" {{#if (eq system.injuryState "inconscient")}}selected{{/if}}>{{localize "D100BASE.InjuryStates.inconscient"}}</option>
+            </select>
+          </section>
+
+          <!-- ================= ATTRIBUTS ================= -->
+          <section class="attributes-panel">
+            <h2>Caractéristiques</h2>
+
+            <div class="attributes-row">
+              {{#each system.attributes}}
+                <div class="attribute-card">
+
+                  <span
+                    class="attribute-name"
+                    title="{{localize (concat "D100BASE.Attributes." @key)}}"
+                  >
+                    {{lookup ../config.attributesShort @key}}
+                  </span>
+
+                  <input
+                    class="attribute-input"
+                    type="number"
+                    name="system.attributes.{{@key}}"
+                    value="{{this}}"
+                    min="0"
+                    max="999">
+
+                  <button
+                    class="attribute-roll"
+                    type="button"
+                    data-roll="{{@key}}"
+                    title="Jet {{localize (concat "D100BASE.Attributes." @key)}}"
+                  ></button>
+
+                </div>
+              {{/each}}
+            </div>
+          </section>
+
+          <!-- ================= INVENTAIRE ================= -->
+          <section class="inventory-panel">
+
+            <h2 class="inventory-title">
+              <span>Inventaire</span>
+              <span class="inventory-total {{#if system.overburdened}}overweight{{/if}}">
+                {{formatNumberClean system.totalWeight}} / {{formatNumberClean system.capacity}} kg
+              </span>
+            </h2>
+
+            <div class="inventory-scroll">
+
+              <ul class="inventory-list">
+
+                <li class="inventory-header">
+                  <span class="sortable" data-sort="name">
+                    Nom <span class="sort-icon">{{sortState.icons.name}}</span>
+                  </span>
+                  <span class="sortable" data-sort="type">
+                    Type <span class="sort-icon">{{sortState.icons.type}}</span>
+                  </span>
+                  <span class="sortable" data-sort="quantity">
+                    Qté <span class="sort-icon">{{sortState.icons.quantity}}</span>
+                  </span>
+                  <span class="sortable" data-sort="weight">
+                    Poids (kg) <span class="sort-icon">{{sortState.icons.weight}}</span>
+                  </span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </li>
+
+                {{#if inventoryTree.length}}
+                  {{#each inventoryTree}}
+                    {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
+                  {{/each}}
+                {{else}}
+                  <li class="empty-container-row">
+                    <span>Aucun objet dans l’inventaire.</span>
+                  </li>
+                {{/if}}
+
+              </ul>
+
+            </div>
+
+          </section>
+
+        </div>
+      </div>
+
+      <!-- ================= DETAILS ================= -->
+      <div class="tab" data-group="primary" data-tab="details">
+
+        <section class="details-panel">
+          <h2>Profil</h2>
+
+          <div class="details-row">
+            <div class="field">
+              <label>Âge</label>
+              <input type="number" name="system.details.age" value="{{system.details.age}}">
+            </div>
+
+            <div class="field">
+              <label>Taille</label>
+              <input type="number" name="system.details.height" value="{{system.details.height}}">
+            </div>
+
+            <div class="field">
+              <label>Poids</label>
+              <input type="number" name="system.details.weight" value="{{system.details.weight}}">
+            </div>
           </div>
-        </section>
 
-        <!-- ================= INVENTAIRE ================= -->
-        <section class="inventory-panel">
+          <div class="field">
+            <label>Traits</label>
+            <textarea name="system.details.traits" rows="3">{{system.details.traits}}</textarea>
+          </div>
 
-          <h2 class="inventory-title">
-            <span>Inventaire</span>
-            <span class="inventory-total {{#if system.overburdened}}overweight{{/if}}">
-              {{formatNumberClean system.totalWeight}} / {{formatNumberClean system.capacity}} kg
-            </span>
-          </h2>
+          <h2>Historique</h2>
 
-          <div class="inventory-scroll">
+          <div class="field aptitude-field">
+            <label>Aptitudes</label>
 
-            <ul class="inventory-list">
+            <div class="aptitude-cards">
+              {{#if hasAptitudesCards}}
+                {{#each aptitudesCards as |aptitude|}}
+                  <article
+                    class="aptitude-card {{#if aptitude.collapsed}}collapsed{{/if}}"
+                    data-aptitude-id="{{aptitude.id}}"
+                  >
+                    <button
+                      type="button"
+                      class="aptitude-card-toggle"
+                      aria-expanded="{{#if aptitude.collapsed}}false{{else}}true{{/if}}"
+                    >
+                      <span class="aptitude-card-title">
+                        <span class="aptitude-card-icon">
+                          <i class="fas fa-star" aria-hidden="true"></i>
+                        </span>
+                        <span class="aptitude-card-label">{{aptitude.name}}</span>
+                      </span>
 
-              <li class="inventory-header">
-                <span class="sortable" data-sort="name">
-                  Nom <span class="sort-icon">{{sortState.icons.name}}</span>
-                </span>
-                <span class="sortable" data-sort="type">
-                  Type <span class="sort-icon">{{sortState.icons.type}}</span>
-                </span>
-                <span class="sortable" data-sort="quantity">
-                  Qté <span class="sort-icon">{{sortState.icons.quantity}}</span>
-                </span>
-                <span class="sortable" data-sort="weight">
-                  Poids (kg) <span class="sort-icon">{{sortState.icons.weight}}</span>
-                </span>
-                <span></span>
-                <span></span>
-              </li>
+                      <span class="aptitude-card-actions">
+                        <i class="fas fa-pen aptitude-card-edit" data-aptitude-id="{{aptitude.id}}"></i>
+                        <i class="fas fa-chevron-down aptitude-card-arrow" aria-hidden="true"></i>
+                      </span>
+                    </button>
 
-              {{#if inventoryTree.length}}
-                {{#each inventoryTree}}
-                  {{> "systems/d100base/templates/partials/inventory-node.hbs" node=this}}
+                    <div class="aptitude-card-body-wrap">
+                      <div class="aptitude-card-body">{{aptitude.description}}</div>
+                    </div>
+                  </article>
                 {{/each}}
               {{else}}
-                <li class="empty-container-row">
-                  <span>Aucun objet dans l’inventaire.</span>
-                </li>
+                <p class="aptitude-empty">{{localize "D100BASE.Actor.AptitudesEmpty"}}</p>
               {{/if}}
 
-            </ul>
+              <button type="button" class="aptitude-add-card">
+                <span class="aptitude-add-card-icon">
+                  <i class="fas fa-plus" aria-hidden="true"></i>
+                </span>
+                <span class="aptitude-add-card-label">{{localize "D100BASE.Actor.AptitudeAdd"}}</span>
+              </button>
+            </div>
+          </div>
 
+          <div class="field">
+            <label>Biographie</label>
+            <textarea name="system.details.biographie" rows="6">{{system.details.biographie}}</textarea>
           </div>
 
         </section>
 
       </div>
-    </div>
 
-    <!-- ================= DETAILS ================= -->
-    <div class="tab" data-group="primary" data-tab="details">
+      <!-- ================= JOURNAL ================= -->
+      <div class="tab" data-group="primary" data-tab="journal">
 
-      <section class="details-panel">
-        <h2>Profil</h2>
+        <section>
+          <h2>PNJ rencontrés</h2>
+          <textarea name="system.journal.npcs" rows="7">{{system.journal.npcs}}</textarea>
+        </section>
 
-        <div class="details-row">
-          <div class="field">
-            <label>Âge</label>
-            <input type="number" name="system.details.age" value="{{system.details.age}}">
-          </div>
+        <section>
+          <h2>Factions</h2>
+          <textarea name="system.journal.factions" rows="5">{{system.journal.factions}}</textarea>
+        </section>
 
-          <div class="field">
-            <label>Taille</label>
-            <input type="number" name="system.details.height" value="{{system.details.height}}">
-          </div>
+        <section>
+          <h2>Notes personnelles</h2>
+          <textarea name="system.journal.notes" rows="10">{{system.journal.notes}}</textarea>
+        </section>
 
-          <div class="field">
-            <label>Poids</label>
-            <input type="number" name="system.details.weight" value="{{system.details.weight}}">
-          </div>
-        </div>
+      </div>
 
-        <div class="field">
-          <label>Traits</label>
-          <textarea name="system.details.traits" rows="3">{{system.details.traits}}</textarea>
-        </div>
+      <!-- ================= STATE ================= -->
+      <div class="tab" data-group="primary" data-tab="state">
 
-        <h2>Historique</h2>
+        <section>
+          <h2>Équipement</h2>
+          <textarea
+            name="system.state.equipment"
+            rows="6"
+            placeholder="Notes d’équipement porté, protections, armes équipées, sac, etc."
+          >{{system.state.equipment}}</textarea>
+        </section>
 
-		<div class="field aptitude-field">
-		  <label>Aptitudes</label>
+        <section>
+          {{> "systems/d100base/templates/partials/localized-wounds.hbs"}}
+        </section>
 
-		  <div class="aptitude-cards">
-			{{#if hasAptitudesCards}}
-			  {{#each aptitudesCards as |aptitude|}}
-				<article
-				  class="aptitude-card {{#if aptitude.collapsed}}collapsed{{/if}}"
-				  data-aptitude-id="{{aptitude.id}}"
-				>
-				  <button
-				    type="button"
-				    class="aptitude-card-toggle"
-				    aria-expanded="{{#if aptitude.collapsed}}false{{else}}true{{/if}}"
-				  >
-				    <span class="aptitude-card-title">
-					  <span class="aptitude-card-icon">
-					    <i class="fas fa-star" aria-hidden="true"></i>
-					  </span>
-					  <span class="aptitude-card-label">{{aptitude.name}}</span>
-				    </span>
+        <section>
+          <h2>Notes d’état</h2>
+          <textarea
+            name="system.state.injuries"
+            rows="6"
+            placeholder="Notes libres sur les blessures, séquelles, soins, réparations, etc."
+          >{{system.state.injuries}}</textarea>
+        </section>
 
-				    <span class="aptitude-card-actions">
-					  <i class="fas fa-pen aptitude-card-edit" data-aptitude-id="{{aptitude.id}}"></i>
-					  <i class="fas fa-chevron-down aptitude-card-arrow" aria-hidden="true"></i>
-				    </span>
-				  </button>
+      </div>
 
-				  <div class="aptitude-card-body-wrap">
-					<div class="aptitude-card-body">{{aptitude.description}}</div>
-				  </div>
-				</article>
-			  {{/each}}
-			{{else}}
-			  <p class="aptitude-empty">{{localize "D100BASE.Actor.AptitudesEmpty"}}</p>
-			{{/if}}
+    </section>
 
-			<button type="button" class="aptitude-add-card">
-			  <span class="aptitude-add-card-icon">
-				<i class="fas fa-plus" aria-hidden="true"></i>
-			  </span>
-			  <span class="aptitude-add-card-label">{{localize "D100BASE.Actor.AptitudeAdd"}}</span>
-			</button>
-		  </div>
-		</div>
-
-        <div class="field">
-          <label>Biographie</label>
-          <textarea name="system.details.biographie" rows="6">{{system.details.biographie}}</textarea>
-        </div>
-
-      </section>
-
-    </div>
-
-    <!-- ================= JOURNAL ================= -->
-    <div class="tab" data-group="primary" data-tab="journal">
-
-      <section>
-        <h2>PNJ rencontrés</h2>
-        <textarea name="system.journal.npcs" rows="7">{{system.journal.npcs}}</textarea>
-      </section>
-
-      <section>
-        <h2>Factions</h2>
-        <textarea name="system.journal.factions" rows="5">{{system.journal.factions}}</textarea>
-      </section>
-
-      <section>
-        <h2>Notes personnelles</h2>
-        <textarea name="system.journal.notes" rows="10">{{system.journal.notes}}</textarea>
-      </section>
-
-    </div>
-
-    <!-- ================= STATE ================= -->
-    <div class="tab" data-group="primary" data-tab="state">
-
-      <section>
-        <h2>Équipement</h2>
-        <textarea
-          name="system.state.equipment"
-          rows="6"
-          placeholder="Notes d’équipement porté, protections, armes équipées, sac, etc."
-        >{{system.state.equipment}}</textarea>
-      </section>
-
-      <section>
-        {{> "systems/d100base/templates/partials/localized-wounds.hbs"}}
-      </section>
-
-      <section>
-        <h2>Notes d’état</h2>
-        <textarea
-          name="system.state.injuries"
-          rows="6"
-          placeholder="Notes libres sur les blessures, séquelles, soins, réparations, etc."
-        >{{system.state.injuries}}</textarea>
-      </section>
-
-    </div>
-
-  </section>
+  {{/if}}
 
 </form>

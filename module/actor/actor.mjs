@@ -120,12 +120,16 @@ export class D100Actor extends Actor {
    */
   async setLocalizedWound(partKey, stateKey) {
     if (!this.isValidLocalizedWoundPart(partKey)) {
-      ui.notifications?.warn(`Membre invalide : ${partKey}`);
+      ui.notifications?.warn(
+        this.localize("D100BASE.Errors.InvalidLocalizedWoundPart", "Membre invalide.")
+      );
       return false;
     }
 
     if (!this.isValidLocalizedWoundState(stateKey)) {
-      ui.notifications?.warn(`État de blessure invalide : ${stateKey}`);
+      ui.notifications?.warn(
+        this.localize("D100BASE.Errors.InvalidLocalizedWoundState", "État de blessure invalide.")
+      );
       return false;
     }
 
@@ -262,6 +266,14 @@ export class D100Actor extends Actor {
   }
 
   /**
+   * Indique si un item peut être transféré comme racine d'un sous-arbre.
+   */
+  isTransferableInventoryItem(itemOrId) {
+    const item = typeof itemOrId === "string" ? this.getInventoryItem(itemOrId) : itemOrId;
+    return !!item;
+  }
+
+  /**
    * Quantité runtime sûre.
    */
   getItemQuantity(itemOrId) {
@@ -384,6 +396,145 @@ export class D100Actor extends Actor {
 
     walk(root);
     return results;
+  }
+
+  /**
+   * Retourne le sous-arbre runtime complet d'un item racine
+   * (item simple ou conteneur).
+   */
+  getInventorySubtree(itemId) {
+    const map = this._buildInventoryNodeMap();
+    const root = map.get(itemId);
+    if (!root) return null;
+
+    const toSubtreeNode = (node) => {
+      const item = node.item;
+
+      return {
+        id: item.id,
+        item,
+        data: item.toObject(),
+        children: node.children.map(child => toSubtreeNode(child))
+      };
+    };
+
+    return toSubtreeNode(root);
+  }
+
+  /**
+   * Retourne tous les items d'un sous-arbre, racine incluse.
+   */
+  flattenInventorySubtree(subtree) {
+    if (!subtree) return [];
+
+    const results = [];
+
+    const walk = (node) => {
+      results.push(node);
+      for (const child of node.children) {
+        walk(child);
+      }
+    };
+
+    walk(subtree);
+    return results;
+  }
+
+  /**
+   * Retourne le poids total d'un sous-arbre.
+   * On lit le poids runtime déjà préparé sur chaque item racine.
+   */
+  getInventorySubtreeWeight(itemId) {
+    const item = this.getInventoryItem(itemId);
+    if (!item) return 0;
+
+    return Math.round(Number(item.system?.weight ?? 0) * 100) / 100;
+  }
+
+  /**
+   * Teste si un acteur cible accorde au moins un certain niveau de permission
+   * à l'utilisateur courant.
+   */
+  hasMinimumTransferPermissionForUser(targetActor, user = game.user, minimumLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {  // joueur doit avoir permission "Limité"
+    if (!targetActor || !user) return false;
+    return targetActor.testUserPermission(user, minimumLevel);
+  }
+
+  /**
+   * Retourne les tokens de scène pour un acteur donné.
+   */
+  getSceneTokensForActor(targetActor) {
+    const placeables = canvas?.tokens?.placeables ?? [];
+    return placeables.filter(token => token?.actor?.id === targetActor?.id);
+  }
+
+  /**
+   * Vérification simple de visibilité pour le transfert.
+   * On considère visible si le token cible est visible pour l'utilisateur courant.
+   */
+  isTransferTargetTokenVisible(sourceToken, targetToken) {
+    if (!sourceToken || !targetToken) return false;
+    if (sourceToken.id === targetToken.id) return false;
+    if (!targetToken.visible) return false;
+
+    return true;
+  }
+
+  /**
+   * Vérifie si un acteur peut être ciblé pour un transfert depuis un token source.
+   */
+  canActorBeTransferTargetFromSourceToken(
+    targetActor,
+    sourceToken,
+    {
+      user = game.user,
+      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+    } = {}
+  ) {
+    if (!targetActor || !sourceToken) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.TransferTargetNotFound", "Acteur cible introuvable.")
+      };
+    }
+
+    if (targetActor.id === this.id) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Errors.CannotTransferToSelf", "Le transfert vers le même acteur n'est pas autorisé.")
+      };
+    }
+
+    if (!this.hasMinimumTransferPermissionForUser(targetActor, user, minimumPermissionLevel)) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.TransferPermissionDenied", "Permissions insuffisantes sur l’acteur cible.")
+      };
+    }
+
+    const sceneTokens = this.getSceneTokensForActor(targetActor);
+    if (!sceneTokens.length) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.TransferTargetNotOnScene", "Aucun token cible présent sur la scène.")
+      };
+    }
+
+    const hasVisibleTarget = sceneTokens.some(targetToken =>
+      this.isTransferTargetTokenVisible(sourceToken, targetToken)
+    );
+
+    if (!hasVisibleTarget) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.TransferTargetNotVisible", "Aucun token cible visible pour ce transfert.")
+      };
+    }
+
+    return {
+      valid: true,
+      reason: null
+    };
   }
 
   /* -------------------------------------------- */
@@ -545,7 +696,7 @@ export class D100Actor extends Actor {
     if (!item) {
       return {
         valid: false,
-        reason: "Item introuvable."
+        reason: this.localize("D100BASE.Errors.ItemNotFound", "Item introuvable.")
       };
     }
 
@@ -560,21 +711,21 @@ export class D100Actor extends Actor {
     if (!target) {
       return {
         valid: false,
-        reason: "Conteneur cible introuvable."
+        reason: this.localize("D100BASE.Errors.TargetContainerNotFound", "Conteneur cible introuvable.")
       };
     }
 
     if (!target.system.isContainer) {
       return {
         valid: false,
-        reason: "La cible n'est pas un conteneur."
+        reason: this.localize("D100BASE.Errors.InvalidContainer", "La cible n'est pas un conteneur.")
       };
     }
 
     if (item.id === target.id) {
       return {
         valid: false,
-        reason: "Un conteneur ne peut pas être placé dans lui-même."
+        reason: this.localize("D100BASE.Errors.CannotContainSelf", "Un conteneur ne peut pas être placé dans lui-même.")
       };
     }
 
@@ -582,7 +733,7 @@ export class D100Actor extends Actor {
     if (descendants.includes(target.id)) {
       return {
         valid: false,
-        reason: "Déplacement impossible : boucle parent/enfant."
+        reason: this.localize("D100BASE.Errors.ContainerLoop", "Déplacement impossible : boucle parent / enfant.")
       };
     }
 
@@ -594,7 +745,98 @@ export class D100Actor extends Actor {
       if ((targetContentWeight + itemWeight) > targetCapacity) {
         return {
           valid: false,
-          reason: "Capacité du conteneur dépassée."
+          reason: this.localize("D100BASE.Errors.CapacityExceeded", "Capacité du conteneur dépassée.")
+        };
+      }
+    }
+
+    return {
+      valid: true,
+      reason: null
+    };
+  }
+
+  /**
+   * Vérifie si un transfert inter-acteurs est autorisé.
+   * - targetActor : acteur cible
+   * - itemId : item racine transféré
+   * - targetContainerId : conteneur cible chez l'acteur cible (ou null = racine)
+   * - sourceToken : token source du transfert
+   */
+  canTransferInventorySubtreeToActor(
+    itemId,
+    targetActor,
+    targetContainerId = null,
+    {
+      sourceToken = null,
+      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+    } = {}
+  ) {
+    const item = this.getInventoryItem(itemId);
+
+    if (!item) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Errors.ItemNotFound", "Item introuvable.")
+      };
+    }
+
+    if (!targetActor || !(targetActor instanceof Actor)) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.TransferTargetNotFound", "Acteur cible introuvable.")
+      };
+    }
+
+    if (!sourceToken) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Inventory.NoTransferSourceToken", "Aucun token source valide n’est disponible pour ce transfert.")
+      };
+    }
+
+    const targetActorValidation = this.canActorBeTransferTargetFromSourceToken(
+      targetActor,
+      sourceToken,
+      { minimumPermissionLevel }
+    );
+
+    if (!targetActorValidation.valid) {
+      return targetActorValidation;
+    }
+
+    if (!targetContainerId) {
+      return {
+        valid: true,
+        reason: null
+      };
+    }
+
+    const targetContainer = targetActor.getInventoryItem?.(targetContainerId) ?? null;
+
+    if (!targetContainer) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Errors.TargetContainerNotFound", "Conteneur cible introuvable.")
+      };
+    }
+
+    if (!targetContainer.system?.isContainer) {
+      return {
+        valid: false,
+        reason: this.localize("D100BASE.Errors.InvalidContainer", "La cible n'est pas un conteneur.")
+      };
+    }
+
+    const targetCapacity = Number(targetContainer.system.capacityWeight ?? 0);
+    if (targetCapacity > 0) {
+      const targetContentWeight = Number(targetActor.getContainerContentWeight?.(targetContainer.id) ?? 0);
+      const subtreeWeight = this.getInventorySubtreeWeight(itemId);
+
+      if ((targetContentWeight + subtreeWeight) > targetCapacity) {
+        return {
+          valid: false,
+          reason: this.localize("D100BASE.Errors.CapacityExceeded", "Capacité du conteneur dépassée.")
         };
       }
     }
@@ -609,6 +851,138 @@ export class D100Actor extends Actor {
   /* ACTIONS MÉTIER INVENTAIRE                    */
   /* -------------------------------------------- */
 
+  /**
+   * Prépare les données d'un item pour une recréation sur un autre acteur.
+   * On retire les IDs Foundry et on force le nouveau parent runtime.
+   */
+  prepareItemDataForActorTransfer(itemData, targetContainerId = null) {
+    const cloned = foundry.utils.deepClone(itemData);
+
+    delete cloned._id;
+    delete cloned.folder;
+    delete cloned.sort;
+    delete cloned.ownership;
+
+    if (!cloned.system) {
+      cloned.system = {};
+    }
+
+    cloned.system.containerId = targetContainerId;
+    cloned.system.container = targetContainerId;
+
+    if (cloned.system.isContainer) {
+      cloned.system.quantity = 1;
+    }
+
+    return cloned;
+  }
+
+  /**
+   * Recrée récursivement un sous-arbre d'inventaire chez l'acteur courant.
+   * Retourne la liste des nouveaux items créés.
+   */
+  async createTransferredSubtree(subtreeNode, targetContainerId = null, createdItems = []) {
+    const itemData = this.prepareItemDataForActorTransfer(subtreeNode.data, targetContainerId);
+
+    const [createdRoot] = await this.createEmbeddedDocuments("Item", [itemData]);
+    createdItems.push(createdRoot);
+
+    for (const child of subtreeNode.children) {
+      await this.createTransferredSubtree(child, createdRoot.id, createdItems);
+    }
+
+    return createdItems;
+  }
+
+  /**
+   * Transfère un item simple ou un conteneur complet vers un autre acteur.
+   * Si targetContainerId est null, l'objet arrive à la racine de l'inventaire cible.
+   */
+  async transferInventoryItemToActor(
+    itemId,
+    targetActor,
+    targetContainerId = null,
+    {
+      sourceToken = null,
+      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+    } = {}
+  ) {
+    const item = this.getInventoryItem(itemId);
+    if (!item) {
+      const reason = this.localize("D100BASE.Errors.ItemNotFound", "Item introuvable.");
+      ui.notifications?.warn(reason);
+      return {
+        success: false,
+        reason
+      };
+    }
+
+    const validation = this.canTransferInventorySubtreeToActor(
+      itemId,
+      targetActor,
+      targetContainerId,
+      {
+        sourceToken,
+        minimumPermissionLevel
+      }
+    );
+
+    if (!validation.valid) {
+      ui.notifications?.warn(validation.reason);
+      return {
+        success: false,
+        reason: validation.reason
+      };
+    }
+
+    const subtree = this.getInventorySubtree(itemId);
+    if (!subtree) {
+      const reason = this.localize("D100BASE.Errors.InventorySubtreeNotFound", "Sous-arbre d'inventaire introuvable.");
+      ui.notifications?.warn(reason);
+      return {
+        success: false,
+        reason
+      };
+    }
+
+    const sourceNodes = this.flattenInventorySubtree(subtree);
+    const sourceItemIds = sourceNodes.map(node => node.id);
+
+    try {
+      const createdItems = await targetActor.createTransferredSubtree(subtree, targetContainerId);
+
+      await this.deleteEmbeddedDocuments("Item", sourceItemIds);
+
+      return {
+        success: true,
+        transferredRootItemId: itemId,
+        sourceItemIds,
+        createdItemIds: createdItems.map(created => created.id),
+        targetActorId: targetActor.id,
+        targetContainerId,
+        sourceTokenId: sourceToken?.id ?? null
+      };
+    } catch (err) {
+      console.error("D100 Base | Erreur transfert inter-acteurs", err);
+
+      const reason = this.localize("D100BASE.Errors.InventoryTransferFailed", "Erreur pendant le transfert d'inventaire.");
+      ui.notifications?.error(`${reason} ${this.localize("D100BASE.HUD.RollError")}`);
+
+      return {
+        success: false,
+        reason,
+        error: err
+      };
+    }
+  }
+
+  /**
+   * Version de confort : transfert vers la racine de l'inventaire cible.
+   */
+  async transferInventoryItemToActorRoot(itemId, targetActor, options = {}) {
+    return this.transferInventoryItemToActor(itemId, targetActor, null, options);
+  }
+ 
   /**
    * Déplace un item dans un conteneur (ou à la racine si null).
    */
@@ -735,13 +1109,38 @@ export class D100Actor extends Actor {
   }
 
   /* -------------------------------------------- */
-  /* ROLL                                         */
+  /* JETS D100 / INITIATIVE                       */
   /* -------------------------------------------- */
 
-  async rollAttribute(attributeKey) {
-    const attributeValue = Number(this.system.attributes?.[attributeKey] ?? 0);
+  /**
+   * Localise une clé avec fallback.
+   */
+  localize(key, fallback = "") {
+    const localized = game.i18n?.localize?.(key);
+    if (localized && localized !== key) {
+      return localized;
+    }
 
-    const labels = {
+    return fallback || key;
+  }
+
+  /**
+   * Formate une clé i18n avec fallback.
+   */
+  format(key, data = {}, fallback = "") {
+    const formatted = game.i18n?.format?.(key, data);
+    if (formatted && formatted !== key) {
+      return formatted;
+    }
+
+    return fallback || key;
+  }
+
+  /**
+   * Retourne le libellé localisé d’un attribut.
+   */
+  getAttributeLabel(attributeKey) {
+    const fallbackLabels = {
       corpsacorps: "Corps-à-corps",
       capacitedetir: "Capacité de tir",
       force: "Force",
@@ -751,17 +1150,408 @@ export class D100Actor extends Actor {
       stress: "Stress"
     };
 
-    const roll = await (new Roll("1d100")).evaluate();
-    const result = roll.total;
+    return this.localize(
+      `D100BASE.Attributes.${attributeKey}`,
+      fallbackLabels[attributeKey] ?? attributeKey
+    );
+  }
 
-    let outcome = "Échec";
-    if (result <= 5) outcome = "Réussite Critique";
-    else if (result <= attributeValue) outcome = "Réussite";
-    else if (result >= 96) outcome = "Échec Critique";
+  /**
+   * Retourne le libellé court localisé d’un attribut.
+   */
+  getAttributeShortLabel(attributeKey) {
+    const fallbackShortLabels = {
+      corpsacorps: "CC",
+      capacitedetir: "CT",
+      force: "F",
+      agilite: "A",
+      intelligence: "I",
+      perception: "P",
+      stress: "S"
+    };
 
-    await roll.toMessage({
-      speaker: ChatMessage.getSpeaker({ actor: this }),
-      flavor: `${labels[attributeKey] ?? attributeKey} (${attributeValue}%) → ${outcome}`
+    return this.localize(
+      `D100BASE.AttributesShort.${attributeKey}`,
+      fallbackShortLabels[attributeKey] ?? attributeKey
+    );
+  }
+
+  /**
+   * Retourne le libellé localisé du résultat d’un jet d100.
+   */
+  getD100OutcomeLabel(outcomeKey) {
+    const localizationMap = {
+      "critical-success": "D100BASE.Roll.CriticalSuccess",
+      success: "D100BASE.Roll.Success",
+      failure: "D100BASE.Roll.Failure",
+      "critical-failure": "D100BASE.Roll.CriticalFailure"
+    };
+
+    const fallbackMap = {
+      "critical-success": "Réussite critique",
+      success: "Réussite",
+      failure: "Échec",
+      "critical-failure": "Échec critique"
+    };
+
+    const key = localizationMap[outcomeKey];
+    const fallback = fallbackMap[outcomeKey] ?? outcomeKey;
+
+    return key ? this.localize(key, fallback) : fallback;
+  }
+
+  /**
+   * Évalue un jet d100 contre une valeur cible.
+   *
+   * Options :
+   * - modifier :
+   *   bonus  => abaisse la cible
+   *   malus  => augmente la cible
+   * - mode :
+   *   "normal" | "advantage" | "disadvantage"
+   *
+   * Règles critiques :
+   * - 1 à 5    = réussite critique
+   * - 96 à 100 = échec critique
+   */
+  async evaluateD100Check(targetValue, {
+    rollFormula = "1d100",
+    criticalSuccessMax = 5,
+    criticalFailureMin = 96,
+    modifier = 0,
+    mode = "normal"
+  } = {}) {
+    const baseTarget = Math.max(0, Number(targetValue ?? 0));
+    const normalizedModifier = Number(modifier ?? 0) || 0;
+
+    // Bonus => cible plus basse ; Malus => cible plus haute
+    const modifiedTarget = Math.max(0, baseTarget - normalizedModifier);
+
+    const normalizedMode = ["normal", "advantage", "disadvantage"].includes(mode)
+      ? mode
+      : "normal";
+
+    const firstRoll = await (new Roll(rollFormula)).evaluate();
+    let secondRoll = null;
+    let keptRoll = firstRoll;
+    let discardedRoll = null;
+
+    if (normalizedMode === "advantage" || normalizedMode === "disadvantage") {
+      secondRoll = await (new Roll(rollFormula)).evaluate();
+
+      const firstTotal = Number(firstRoll.total ?? 0);
+      const secondTotal = Number(secondRoll.total ?? 0);
+
+      // En roll-under, "meilleur" = plus petit résultat
+      if (normalizedMode === "advantage") {
+        keptRoll = firstTotal <= secondTotal ? firstRoll : secondRoll;
+        discardedRoll = keptRoll === firstRoll ? secondRoll : firstRoll;
+      } else {
+        keptRoll = firstTotal >= secondTotal ? firstRoll : secondRoll;
+        discardedRoll = keptRoll === firstRoll ? secondRoll : firstRoll;
+      }
+    }
+
+    const result = Number(keptRoll.total ?? 0);
+
+    const isCriticalSuccess = result >= 1 && result <= criticalSuccessMax;
+    const isCriticalFailure = result >= criticalFailureMin && result <= 100;
+
+    const isSuccess = !isCriticalFailure && (isCriticalSuccess || result <= modifiedTarget);
+    const isFailure = !isSuccess;
+
+    let outcomeKey = "failure";
+
+    if (isCriticalSuccess) {
+      outcomeKey = "critical-success";
+    } else if (isCriticalFailure) {
+      outcomeKey = "critical-failure";
+    } else if (isSuccess) {
+      outcomeKey = "success";
+    }
+
+    return {
+      roll: keptRoll,
+      firstRoll,
+      secondRoll,
+      keptRoll,
+      discardedRoll,
+      result,
+      baseTarget,
+      target: modifiedTarget,
+      modifiedTarget,
+      modifier: normalizedModifier,
+      hasModifier: normalizedModifier !== 0,
+      mode: normalizedMode,
+      hasAdvantage: normalizedMode === "advantage",
+      hasDisadvantage: normalizedMode === "disadvantage",
+      margin: modifiedTarget - result,
+      isSuccess,
+      isFailure,
+      isCriticalSuccess,
+      isCriticalFailure,
+      outcomeKey,
+      outcomeLabel: this.getD100OutcomeLabel(outcomeKey)
+    };
+  }
+
+  /**
+   * Construit le flavor pour un jet d’attribut standard.
+   */
+  buildAttributeRollFlavor(attributeKey, checkResult) {
+    const label = this.getAttributeLabel(attributeKey);
+
+    const details = [];
+
+    details.push(`${label} (${checkResult.baseTarget}%)`);
+
+    if (checkResult.hasModifier) {
+      details.push(`cible modifiée : ${checkResult.modifiedTarget}%`);
+    }
+
+    if (checkResult.hasAdvantage) {
+      details.push("Avantage");
+    } else if (checkResult.hasDisadvantage) {
+      details.push("Désavantage");
+    }
+
+    return `${details.join(" | ")} → ${checkResult.outcomeLabel}`;
+  }
+
+  /**
+   * Construit le flavor pour un jet d’initiative.
+   * Affichage voulu :
+   * - agilité en petit
+   * - jet en petit
+   * - différence / initiative en gros
+   */
+  buildInitiativeFlavor(initiativeResult) {
+    const parts = [];
+
+    const title = this.localize("D100BASE.Initiative.Title", "Initiative");
+    const agilityLabel = this.localize("D100BASE.Initiative.AgilityLabel", "Agilité");
+    const rollLabel = this.localize("D100BASE.Initiative.RollLabel", "Jet");
+
+    parts.push(`<div class="d100base-chat d100base-chat-initiative">`);
+    parts.push(`<div class="d100base-chat-initiative-title">${title}</div>`);
+    parts.push(`<div class="d100base-chat-initiative-subline">${agilityLabel} : ${initiativeResult.agility}</div>`);
+    parts.push(`<div class="d100base-chat-initiative-subline">${rollLabel} : ${initiativeResult.result}</div>`);
+
+    if (initiativeResult.hasModifier) {
+      parts.push(
+        `<div class="d100base-chat-initiative-subline">Cible modifiée : ${initiativeResult.modifiedTarget}%</div>`
+      );
+    }
+
+    if (initiativeResult.hasAdvantage) {
+      parts.push(`<div class="d100base-chat-initiative-subline">Avantage</div>`);
+    } else if (initiativeResult.hasDisadvantage) {
+      parts.push(`<div class="d100base-chat-initiative-subline">Désavantage</div>`);
+    }
+
+    if (initiativeResult.criticalInitiativeModifier !== 0) {
+      const modifierLabel = initiativeResult.criticalInitiativeModifier > 0
+        ? this.format(
+            "D100BASE.Initiative.CriticalBonus",
+            { value: initiativeResult.criticalInitiativeModifier },
+            `Bonus critique : +${initiativeResult.criticalInitiativeModifier}`
+          )
+        : this.format(
+            "D100BASE.Initiative.CriticalPenalty",
+            { value: initiativeResult.criticalInitiativeModifier },
+            `Malus critique : ${initiativeResult.criticalInitiativeModifier}`
+          );
+
+      parts.push(`<div class="d100base-chat-initiative-subline">${modifierLabel}</div>`);
+    }
+
+    parts.push(`<div class="d100base-chat-initiative-score">${initiativeResult.finalInitiative}</div>`);
+    parts.push(`<div class="d100base-chat-initiative-outcome">${initiativeResult.outcomeLabel}</div>`);
+    parts.push(`</div>`);
+
+    return parts.join("");
+  }
+
+  /**
+   * Extrait un tokenId à partir d’un contexte souple :
+   * - Token
+   * - TokenDocument
+   * - string (id direct)
+   * - objet contenant tokenId
+   */
+  getTokenIdFromContext(tokenContext = null) {
+    if (!tokenContext) return null;
+
+    if (typeof tokenContext === "string") {
+      return tokenContext;
+    }
+
+    if (tokenContext.tokenId) {
+      return tokenContext.tokenId;
+    }
+
+    if (tokenContext.document?.id) {
+      return tokenContext.document.id;
+    }
+
+    if (tokenContext.id) {
+      return tokenContext.id;
+    }
+
+    return null;
+  }
+
+  /**
+   * Retourne tous les combatants du combat actif liés à cet acteur.
+   */
+  getActiveCombatantsForActor() {
+    const combat = game.combats?.active;
+    if (!combat) return [];
+
+    return combat.combatants.filter(combatant => combatant.actorId === this.id);
+  }
+
+  /**
+   * Retourne le combatant correspondant à un token précis.
+   */
+  getCombatantByTokenId(tokenId) {
+    const combat = game.combats?.active;
+    if (!combat || !tokenId) return null;
+
+    return combat.combatants.find(combatant => combatant.tokenId === tokenId) ?? null;
+  }
+
+  /**
+   * Résout le combatant cible pour une action liée à une instance d’acteur.
+   *
+   * Priorité :
+   * 1. tokenId explicite
+   * 2. un seul combatant pour cet acteur
+   * 3. null si ambigu
+   */
+  resolveCombatant(tokenContext = null) {
+    const tokenId = this.getTokenIdFromContext(tokenContext);
+
+    if (tokenId) {
+      return this.getCombatantByTokenId(tokenId);
+    }
+
+    const actorCombatants = this.getActiveCombatantsForActor();
+
+    if (actorCombatants.length === 1) {
+      return actorCombatants[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * Lance l’initiative à partir de l’Agilité :
+   * initiative = Agilité - jet
+   * +50 si réussite critique
+   * -30 si échec critique
+   *
+   * Options :
+   * - token
+   * - modifier
+   * - mode ("normal" | "advantage" | "disadvantage")
+   */
+  async rollInitiative({
+    token = null,
+    modifier = 0,
+    mode = "normal"
+  } = {}) {
+    const agility = Number(this.system.attributes?.agilite ?? 0);
+
+    const checkResult = await this.evaluateD100Check(agility, {
+      modifier,
+      mode
     });
+
+    let criticalInitiativeModifier = 0;
+    if (checkResult.isCriticalSuccess) criticalInitiativeModifier = 50;
+    else if (checkResult.isCriticalFailure) criticalInitiativeModifier = -30;
+
+    const baseInitiative = agility - checkResult.result;
+    const finalInitiative = baseInitiative + criticalInitiativeModifier;
+
+    const initiativeResult = {
+      ...checkResult,
+      agility,
+      baseInitiative,
+      criticalInitiativeModifier,
+      finalInitiative,
+      tokenId: this.getTokenIdFromContext(token),
+      combatantId: null
+    };
+
+    const combat = game.combats?.active;
+    const combatant = this.resolveCombatant(token);
+
+    if (combatant) {
+      initiativeResult.combatantId = combatant.id;
+    }
+
+    if (!combat) {
+      ui.notifications?.warn(
+        this.localize("D100BASE.Initiative.NoActiveCombat", "Aucun combat actif.")
+      );
+    } else if (!combatant) {
+      const actorCombatants = this.getActiveCombatantsForActor();
+
+      if (actorCombatants.length > 1 && !initiativeResult.tokenId) {
+        ui.notifications?.warn(
+          this.localize(
+            "D100BASE.Initiative.AmbiguousCombatant",
+            "Plusieurs instances de cet acteur sont présentes dans le combat. Lancez l’initiative depuis le token concerné."
+          )
+        );
+      } else {
+        ui.notifications?.warn(
+          this.localize(
+            "D100BASE.Initiative.MissingCombatant",
+            "Aucun combatant correspondant trouvé pour cette initiative."
+          )
+        );
+      }
+    } else {
+      const setInitiative = game.d100base?.setCombatantInitiative;
+
+      if (typeof setInitiative === "function") {
+        await setInitiative(combatant, finalInitiative);
+      } else {
+        await combat.setInitiative(combatant.id, finalInitiative);
+      }
+    }
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: this }),
+      content: this.buildInitiativeFlavor(initiativeResult)
+    });
+
+    return initiativeResult;
+  }
+
+  /* -------------------------------------------- */
+  /* ROLL                                         */
+  /* -------------------------------------------- */
+
+  async rollAttribute(attributeKey, {
+    modifier = 0,
+    mode = "normal"
+  } = {}) {
+    const attributeValue = Number(this.system.attributes?.[attributeKey] ?? 0);
+
+    const checkResult = await this.evaluateD100Check(attributeValue, {
+      modifier,
+      mode
+    });
+
+    await checkResult.roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor: this }),
+      flavor: this.buildAttributeRollFlavor(attributeKey, checkResult)
+    });
+
+    return checkResult;
   }
 }

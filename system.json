@@ -2,7 +2,7 @@
   "id": "d100base",
   "title": "D100 Base",
   "description": "Système d100 minimal pour Foundry VTT",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "authors": [
     {
       "name": "LeFreux"
@@ -21,7 +21,7 @@
         "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/latest/download/module.json",
         "compatibility": {
           "minimum": "11",
-          "verified": "13"
+          "verified": "12"
         }
       }
     ]

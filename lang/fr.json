@@ -52,13 +52,9 @@
 	  "Extract": "Sortir du conteneur",
 	  "TransferButton": "Transférer",
 	  "TransferTitle": "Transférer un objet",
-	  "NoTransferSourceToken": "Aucun token source valide n’est disponible pour ce transfert.",
-	  "NoTransferTarget": "Aucun acteur cible visible et autorisé n’est disponible pour ce transfert.",
+	  "NoTransferTarget": "Aucun acteur cible autorisé n’est disponible pour ce transfert.",
 	  "NoTransferTargetSelected": "Aucun acteur cible sélectionné.",
 	  "TransferTargetNotFound": "Acteur cible introuvable.",
-	  "TransferPermissionDenied": "Permissions insuffisantes sur l’acteur cible.",
-	  "TransferTargetNotOnScene": "Aucun token cible présent sur la scène.",
-	  "TransferTargetNotVisible": "Aucun token cible visible pour ce transfert.",
 	  "TransferSuccess": "Transfert effectué vers {actor}.",
 	  "DragDropHint": "Glissez-déposez un objet pour le déplacer dans l’inventaire."
 	},
@@ -102,7 +98,7 @@
 	},
 
     "HUD": {
-      "AttributesTitle": "Raccourcis",
+      "AttributesTitle": "Token",
       "OpenSheet": "Ouvrir la fiche",
       "RollAttribute": "Jet de {attribute}",
       "MissingRollMethod": "Cette fiche ne sait pas lancer de jet d’attribut.",
@@ -205,6 +201,7 @@
 	  "InventorySubtreeNotFound": "Sous-arbre d'inventaire introuvable.",
 	  "InventoryTransferFailed": "Erreur pendant le transfert d'inventaire.",
 	  "InventoryTransferFailedDetailed": "Erreur pendant le transfert d'inventaire. Consulte la console.",
+	  "InventoryTransferProxyUnavailable": "Le proxy GM de transfert est indisponible.",
 	  "InvalidLocalizedWoundPart": "Membre invalide.",
 	  "InvalidLocalizedWoundState": "État de blessure invalide."
 	}

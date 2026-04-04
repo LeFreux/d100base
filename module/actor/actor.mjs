@@ -455,86 +455,13 @@ export class D100Actor extends Actor {
    * Teste si un acteur cible accorde au moins un certain niveau de permission
    * à l'utilisateur courant.
    */
-  hasMinimumTransferPermissionForUser(targetActor, user = game.user, minimumLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {  // joueur doit avoir permission "Limité"
+  hasMinimumTransferPermissionForUser(
+    targetActor,
+    user = game.user,
+    minimumLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+  ) {
     if (!targetActor || !user) return false;
     return targetActor.testUserPermission(user, minimumLevel);
-  }
-
-  /**
-   * Retourne les tokens de scène pour un acteur donné.
-   */
-  getSceneTokensForActor(targetActor) {
-    const placeables = canvas?.tokens?.placeables ?? [];
-    return placeables.filter(token => token?.actor?.id === targetActor?.id);
-  }
-
-  /**
-   * Vérification simple de visibilité pour le transfert.
-   * On considère visible si le token cible est visible pour l'utilisateur courant.
-   */
-  isTransferTargetTokenVisible(sourceToken, targetToken) {
-    if (!sourceToken || !targetToken) return false;
-    if (sourceToken.id === targetToken.id) return false;
-    if (!targetToken.visible) return false;
-
-    return true;
-  }
-
-  /**
-   * Vérifie si un acteur peut être ciblé pour un transfert depuis un token source.
-   */
-  canActorBeTransferTargetFromSourceToken(
-    targetActor,
-    sourceToken,
-    {
-      user = game.user,
-      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
-    } = {}
-  ) {
-    if (!targetActor || !sourceToken) {
-      return {
-        valid: false,
-        reason: this.localize("D100BASE.Inventory.TransferTargetNotFound", "Acteur cible introuvable.")
-      };
-    }
-
-    if (targetActor.id === this.id) {
-      return {
-        valid: false,
-        reason: this.localize("D100BASE.Errors.CannotTransferToSelf", "Le transfert vers le même acteur n'est pas autorisé.")
-      };
-    }
-
-    if (!this.hasMinimumTransferPermissionForUser(targetActor, user, minimumPermissionLevel)) {
-      return {
-        valid: false,
-        reason: this.localize("D100BASE.Inventory.TransferPermissionDenied", "Permissions insuffisantes sur l’acteur cible.")
-      };
-    }
-
-    const sceneTokens = this.getSceneTokensForActor(targetActor);
-    if (!sceneTokens.length) {
-      return {
-        valid: false,
-        reason: this.localize("D100BASE.Inventory.TransferTargetNotOnScene", "Aucun token cible présent sur la scène.")
-      };
-    }
-
-    const hasVisibleTarget = sceneTokens.some(targetToken =>
-      this.isTransferTargetTokenVisible(sourceToken, targetToken)
-    );
-
-    if (!hasVisibleTarget) {
-      return {
-        valid: false,
-        reason: this.localize("D100BASE.Inventory.TransferTargetNotVisible", "Aucun token cible visible pour ce transfert.")
-      };
-    }
-
-    return {
-      valid: true,
-      reason: null
-    };
   }
 
   /* -------------------------------------------- */
@@ -761,16 +688,11 @@ export class D100Actor extends Actor {
    * - targetActor : acteur cible
    * - itemId : item racine transféré
    * - targetContainerId : conteneur cible chez l'acteur cible (ou null = racine)
-   * - sourceToken : token source du transfert
    */
   canTransferInventorySubtreeToActor(
     itemId,
     targetActor,
-    targetContainerId = null,
-    {
-      sourceToken = null,
-      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
-    } = {}
+    targetContainerId = null
   ) {
     const item = this.getInventoryItem(itemId);
 
@@ -788,21 +710,11 @@ export class D100Actor extends Actor {
       };
     }
 
-    if (!sourceToken) {
+    if (targetActor.id === this.id) {
       return {
         valid: false,
-        reason: this.localize("D100BASE.Inventory.NoTransferSourceToken", "Aucun token source valide n’est disponible pour ce transfert.")
+        reason: this.localize("D100BASE.Errors.CannotTransferToSelf", "Le transfert vers le même acteur n'est pas autorisé.")
       };
-    }
-
-    const targetActorValidation = this.canActorBeTransferTargetFromSourceToken(
-      targetActor,
-      sourceToken,
-      { minimumPermissionLevel }
-    );
-
-    if (!targetActorValidation.valid) {
-      return targetActorValidation;
     }
 
     if (!targetContainerId) {
@@ -882,12 +794,22 @@ export class D100Actor extends Actor {
    * Retourne la liste des nouveaux items créés.
    */
   async createTransferredSubtree(subtreeNode, targetContainerId = null, createdItems = []) {
+    if (!subtreeNode?.data) {
+      throw new Error("D100 Base | Sous-arbre de transfert invalide.");
+    }
+
     const itemData = this.prepareItemDataForActorTransfer(subtreeNode.data, targetContainerId);
 
-    const [createdRoot] = await this.createEmbeddedDocuments("Item", [itemData]);
+    const created = await this.createEmbeddedDocuments("Item", [itemData]);
+    const createdRoot = created?.[0] ?? null;
+
+    if (!createdRoot) {
+      throw new Error("D100 Base | Impossible de créer l'item racine transféré.");
+    }
+
     createdItems.push(createdRoot);
 
-    for (const child of subtreeNode.children) {
+    for (const child of (subtreeNode.children ?? [])) {
       await this.createTransferredSubtree(child, createdRoot.id, createdItems);
     }
 
@@ -901,11 +823,7 @@ export class D100Actor extends Actor {
   async transferInventoryItemToActor(
     itemId,
     targetActor,
-    targetContainerId = null,
-    {
-      sourceToken = null,
-      minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
-    } = {}
+    targetContainerId = null
   ) {
     const item = this.getInventoryItem(itemId);
     if (!item) {
@@ -920,11 +838,7 @@ export class D100Actor extends Actor {
     const validation = this.canTransferInventorySubtreeToActor(
       itemId,
       targetActor,
-      targetContainerId,
-      {
-        sourceToken,
-        minimumPermissionLevel
-      }
+      targetContainerId
     );
 
     if (!validation.valid) {
@@ -949,6 +863,10 @@ export class D100Actor extends Actor {
     const sourceItemIds = sourceNodes.map(node => node.id);
 
     try {
+      if (typeof targetActor.createTransferredSubtree !== "function") {
+        throw new Error("D100 Base | La méthode targetActor.createTransferredSubtree est introuvable.");
+      }
+
       const createdItems = await targetActor.createTransferredSubtree(subtree, targetContainerId);
 
       await this.deleteEmbeddedDocuments("Item", sourceItemIds);
@@ -959,19 +877,19 @@ export class D100Actor extends Actor {
         sourceItemIds,
         createdItemIds: createdItems.map(created => created.id),
         targetActorId: targetActor.id,
-        targetContainerId,
-        sourceTokenId: sourceToken?.id ?? null
+        targetContainerId
       };
     } catch (err) {
       console.error("D100 Base | Erreur transfert inter-acteurs", err);
 
-      const reason = this.localize("D100BASE.Errors.InventoryTransferFailed", "Erreur pendant le transfert d'inventaire.");
-      ui.notifications?.error(`${reason} ${this.localize("D100BASE.HUD.RollError")}`);
+      const reason = this.localize(
+        "D100BASE.Errors.InventoryTransferFailed",
+        "Erreur pendant le transfert d'inventaire."
+      );
 
       return {
         success: false,
-        reason,
-        error: err
+        reason
       };
     }
   }
@@ -979,10 +897,47 @@ export class D100Actor extends Actor {
   /**
    * Version de confort : transfert vers la racine de l'inventaire cible.
    */
-  async transferInventoryItemToActorRoot(itemId, targetActor, options = {}) {
-    return this.transferInventoryItemToActor(itemId, targetActor, null, options);
+  async transferInventoryItemToActorRoot(itemId, targetActor) {
+    return this.transferInventoryItemToActor(itemId, targetActor, null);
   }
- 
+
+  /**
+   * Méthode de compatibilité pour les appels legacy/proxy GM.
+   *
+   * Signature attendue par certaines parties du système :
+   * transferInventoryToActor({
+   *   targetActor,
+   *   itemId,
+   *   targetContainerId,
+   *   transferAll
+   * })
+   *
+   * Aujourd'hui, transferAll n'est pas utilisé : le transfert porte déjà
+   * sur tout le sous-arbre de l'item racine demandé.
+   */
+  async transferInventoryToActor({
+    targetActor,
+    itemId,
+    targetContainerId = null,
+    transferAll = true
+  } = {}) {
+    if (!itemId) {
+      const reason = this.localize("D100BASE.Errors.ItemNotFound", "Item introuvable.");
+      return {
+        success: false,
+        reason
+      };
+    }
+
+    void transferAll; // compat legacy : non utilisé pour l’instant
+
+    return this.transferInventoryItemToActor(
+      itemId,
+      targetActor,
+      targetContainerId
+    );
+  }
+
   /**
    * Déplace un item dans un conteneur (ou à la racine si null).
    */
@@ -1201,12 +1156,90 @@ export class D100Actor extends Actor {
   }
 
   /**
+   * Indique si Dice So Nice est disponible.
+   */
+  hasDiceSoNice() {
+    return !!game.dice3d?.showForRoll;
+  }
+
+  /**
+   * Affiche un roll via Dice So Nice si le module est disponible.
+   */
+  async showDiceSoNiceForRoll(roll) {
+    if (!roll || !this.hasDiceSoNice()) return;
+
+    try {
+      await game.dice3d.showForRoll(roll, game.user, true);
+    } catch (err) {
+      console.warn("D100 Base | Impossible d'afficher le roll dans Dice So Nice", err);
+    }
+  }
+
+  /**
+   * Affiche le ou les rolls d’un check dans Dice So Nice.
+   * En avantage / désavantage, on affiche les deux jets.
+   */
+  async showDiceSoNiceForCheckResult(checkResult) {
+    if (!checkResult || !this.hasDiceSoNice()) return;
+
+    const rollsToShow = [];
+
+    if (checkResult.firstRoll) rollsToShow.push(checkResult.firstRoll);
+
+    if (
+      checkResult.secondRoll &&
+      checkResult.secondRoll !== checkResult.firstRoll
+    ) {
+      rollsToShow.push(checkResult.secondRoll);
+    }
+
+    if (!rollsToShow.length && checkResult.roll) {
+      rollsToShow.push(checkResult.roll);
+    }
+
+    for (const roll of rollsToShow) {
+      await this.showDiceSoNiceForRoll(roll);
+    }
+  }
+
+  /**
+   * Affiche uniquement le jet écarté dans Dice So Nice.
+   * Le jet retenu, lui, est déjà affiché automatiquement via le ChatMessage.
+   */
+  async showDiceSoNiceDiscardedRoll(checkResult) {
+    if (!checkResult || !this.hasDiceSoNice()) return;
+
+    const discardedRoll = checkResult.discardedRoll ?? null;
+    if (!discardedRoll) return;
+
+    await this.showDiceSoNiceForRoll(discardedRoll);
+  }
+
+  /**
+   * Crée un message de chat custom en attachant explicitement le Roll.
+   * Cela permet à Foundry et aux modules comme Dice So Nice de reconnaître
+   * le message comme porteur d’un vrai jet.
+   */
+  async createCustomRollMessage({ speaker, roll, content }) {
+    const chatData = {
+      speaker,
+      content,
+      rolls: roll ? [roll] : []
+    };
+
+    const rollMode = game.settings?.get("core", "rollMode");
+    ChatMessage.applyRollMode(chatData, rollMode);
+
+    return ChatMessage.create(chatData);
+  }
+
+  /**
    * Évalue un jet d100 contre une valeur cible.
    *
    * Options :
    * - modifier :
-   *   bonus  => abaisse la cible
-   *   malus  => augmente la cible
+   *   bonus  => stat augmentée
+   *   malus  => stat baissée
    * - mode :
    *   "normal" | "advantage" | "disadvantage"
    *
@@ -1224,8 +1257,8 @@ export class D100Actor extends Actor {
     const baseTarget = Math.max(0, Number(targetValue ?? 0));
     const normalizedModifier = Number(modifier ?? 0) || 0;
 
-    // Bonus => cible plus basse ; Malus => cible plus haute
-    const modifiedTarget = Math.max(0, baseTarget - normalizedModifier);
+    // Bonus => stat augmentée ; Malus => stat baissée
+    const modifiedTarget = Math.max(0, baseTarget + normalizedModifier);
 
     const normalizedMode = ["normal", "advantage", "disadvantage"].includes(mode)
       ? mode
@@ -1296,58 +1329,146 @@ export class D100Actor extends Actor {
   }
 
   /**
-   * Construit le flavor pour un jet d’attribut standard.
+   * Retourne le libellé de mode de jet.
    */
-  buildAttributeRollFlavor(attributeKey, checkResult) {
-    const label = this.getAttributeLabel(attributeKey);
-
-    const details = [];
-
-    details.push(`${label} (${checkResult.baseTarget}%)`);
-
-    if (checkResult.hasModifier) {
-      details.push(`cible modifiée : ${checkResult.modifiedTarget}%`);
+  getRollModeLabel(mode) {
+    switch (mode) {
+      case "advantage":
+        return "Avantage";
+      case "disadvantage":
+        return "Désavantage";
+      default:
+        return "Normal";
     }
-
-    if (checkResult.hasAdvantage) {
-      details.push("Avantage");
-    } else if (checkResult.hasDisadvantage) {
-      details.push("Désavantage");
-    }
-
-    return `${details.join(" | ")} → ${checkResult.outcomeLabel}`;
   }
 
   /**
-   * Construit le flavor pour un jet d’initiative.
-   * Affichage voulu :
-   * - agilité en petit
-   * - jet en petit
-   * - différence / initiative en gros
+   * Retourne la classe CSS d’état pour la carte de jet.
    */
-  buildInitiativeFlavor(initiativeResult) {
-    const parts = [];
+  getRollOutcomeCssClass(resultLike) {
+    if (!resultLike) return "is-failure";
 
-    const title = this.localize("D100BASE.Initiative.Title", "Initiative");
-    const agilityLabel = this.localize("D100BASE.Initiative.AgilityLabel", "Agilité");
-    const rollLabel = this.localize("D100BASE.Initiative.RollLabel", "Jet");
-
-    parts.push(`<div class="d100base-chat d100base-chat-initiative">`);
-    parts.push(`<div class="d100base-chat-initiative-title">${title}</div>`);
-    parts.push(`<div class="d100base-chat-initiative-subline">${agilityLabel} : ${initiativeResult.agility}</div>`);
-    parts.push(`<div class="d100base-chat-initiative-subline">${rollLabel} : ${initiativeResult.result}</div>`);
-
-    if (initiativeResult.hasModifier) {
-      parts.push(
-        `<div class="d100base-chat-initiative-subline">Cible modifiée : ${initiativeResult.modifiedTarget}%</div>`
-      );
+    if (resultLike.isCriticalSuccess || resultLike.outcomeKey === "critical-success") {
+      return "is-critical-success";
     }
 
-    if (initiativeResult.hasAdvantage) {
-      parts.push(`<div class="d100base-chat-initiative-subline">Avantage</div>`);
-    } else if (initiativeResult.hasDisadvantage) {
-      parts.push(`<div class="d100base-chat-initiative-subline">Désavantage</div>`);
+    if (resultLike.isCriticalFailure || resultLike.outcomeKey === "critical-failure") {
+      return "is-critical-failure";
     }
+
+    if (resultLike.isSuccess || resultLike.outcomeKey === "success") {
+      return "is-success";
+    }
+
+    return "is-failure";
+  }
+
+  /**
+   * Formate une valeur signée.
+   */
+  formatSignedValue(value, suffix = "") {
+    const number = Number(value ?? 0) || 0;
+    if (number > 0) return `+${number}${suffix}`;
+    return `${number}${suffix}`;
+  }
+
+  /**
+   * Rend une carte de jet d100 via le template partagé.
+   */
+  async renderD100RollCard(templateData = {}) {
+    const templatePath = "systems/d100base/templates/partials/chat-d100-roll.hbs";
+    return renderTemplate(templatePath, templateData);
+  }
+
+  /**
+   * Prépare les données communes au template de carte de jet.
+   */
+  buildCommonRollCardData({
+    title,
+    kicker = "Jet",
+    cardClass = "",
+    mode = "normal",
+    baseTarget = 0,
+    modifiedTarget = 0,
+    modifier = 0,
+    result = 0,
+    firstRoll = null,
+    secondRoll = null,
+    margin = 0,
+    outcomeKey = "",
+    outcomeLabel = "",
+    extraRows = []
+  } = {}) {
+    return {
+      title,
+      kicker,
+      cardClass,
+
+      mode,
+      modeLabel: this.getRollModeLabel(mode),
+
+      baseTarget,
+      modifiedTarget,
+      modifier,
+      modifierSigned: this.formatSignedValue(modifier),
+      hasModifier: Number(modifier ?? 0) !== 0,
+
+      result,
+      firstRoll,
+      secondRoll,
+
+      margin,
+      marginSigned: this.formatSignedValue(margin),
+
+      outcomeKey,
+      outcomeLabel,
+      outcomeClass: this.getRollOutcomeCssClass({ outcomeKey }),
+
+      extraRows
+    };
+  }
+
+  /**
+   * Construit le contenu chat HTML pour un jet d’attribut.
+   */
+  async buildAttributeRollFlavor(attributeKey, checkResult) {
+    const data = this.buildCommonRollCardData({
+      title: this.getAttributeLabel(attributeKey),
+      kicker: "Jet d’attribut",
+      cardClass: "d100base-chat-card-attribute",
+
+      mode: checkResult.mode,
+      baseTarget: checkResult.baseTarget,
+      modifiedTarget: checkResult.modifiedTarget,
+      modifier: checkResult.modifier,
+
+      result: checkResult.result,
+      firstRoll: checkResult.firstRoll?.total ?? null,
+      secondRoll: checkResult.secondRoll?.total ?? null,
+
+      margin: checkResult.margin,
+      outcomeKey: checkResult.outcomeKey,
+      outcomeLabel: checkResult.outcomeLabel
+    });
+
+    return this.renderD100RollCard(data);
+  }
+
+  /**
+   * Construit le contenu chat HTML pour un jet d’initiative
+   * en réutilisant le même template générique.
+   */
+  async buildInitiativeFlavor(initiativeResult) {
+    const extraRows = [
+      {
+        label: "Agilité",
+        value: initiativeResult.agility
+      },
+      {
+        label: "Initiative",
+        value: initiativeResult.finalInitiative
+      }
+    ];
 
     if (initiativeResult.criticalInitiativeModifier !== 0) {
       const modifierLabel = initiativeResult.criticalInitiativeModifier > 0
@@ -1362,14 +1483,34 @@ export class D100Actor extends Actor {
             `Malus critique : ${initiativeResult.criticalInitiativeModifier}`
           );
 
-      parts.push(`<div class="d100base-chat-initiative-subline">${modifierLabel}</div>`);
+      extraRows.push({
+        label: "Critique",
+        value: modifierLabel
+      });
     }
 
-    parts.push(`<div class="d100base-chat-initiative-score">${initiativeResult.finalInitiative}</div>`);
-    parts.push(`<div class="d100base-chat-initiative-outcome">${initiativeResult.outcomeLabel}</div>`);
-    parts.push(`</div>`);
+    const data = this.buildCommonRollCardData({
+      title: this.localize("D100BASE.Initiative.Title", "Initiative"),
+      kicker: "Jet d’initiative",
+      cardClass: "d100base-chat-card-initiative",
 
-    return parts.join("");
+      mode: initiativeResult.mode,
+      baseTarget: initiativeResult.baseTarget,
+      modifiedTarget: initiativeResult.modifiedTarget,
+      modifier: initiativeResult.modifier,
+
+      result: initiativeResult.result,
+      firstRoll: initiativeResult.firstRoll?.total ?? null,
+      secondRoll: initiativeResult.secondRoll?.total ?? null,
+
+      margin: initiativeResult.margin,
+      outcomeKey: initiativeResult.outcomeKey,
+      outcomeLabel: initiativeResult.outcomeLabel,
+
+      extraRows
+    });
+
+    return this.renderD100RollCard(data);
   }
 
   /**
@@ -1472,7 +1613,7 @@ export class D100Actor extends Actor {
     if (checkResult.isCriticalSuccess) criticalInitiativeModifier = 50;
     else if (checkResult.isCriticalFailure) criticalInitiativeModifier = -30;
 
-    const baseInitiative = agility - checkResult.result;
+    const baseInitiative = checkResult.modifiedTarget - checkResult.result;
     const finalInitiative = baseInitiative + criticalInitiativeModifier;
 
     const initiativeResult = {
@@ -1524,10 +1665,15 @@ export class D100Actor extends Actor {
       }
     }
 
-    await ChatMessage.create({
+    const content = await this.buildInitiativeFlavor(initiativeResult);
+
+    await this.createCustomRollMessage({
       speaker: ChatMessage.getSpeaker({ actor: this }),
-      content: this.buildInitiativeFlavor(initiativeResult)
+      roll: checkResult.keptRoll,
+      content
     });
+
+    await this.showDiceSoNiceDiscardedRoll(checkResult);
 
     return initiativeResult;
   }
@@ -1547,10 +1693,15 @@ export class D100Actor extends Actor {
       mode
     });
 
-    await checkResult.roll.toMessage({
+    const content = await this.buildAttributeRollFlavor(attributeKey, checkResult);
+
+    await this.createCustomRollMessage({
       speaker: ChatMessage.getSpeaker({ actor: this }),
-      flavor: this.buildAttributeRollFlavor(attributeKey, checkResult)
+      roll: checkResult.keptRoll,
+      content
     });
+
+    await this.showDiceSoNiceDiscardedRoll(checkResult);
 
     return checkResult;
   }

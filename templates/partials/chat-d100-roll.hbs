@@ -1,0 +1,74 @@
+<div class="d100base-chat-card {{cardClass}} {{outcomeClass}}">
+  <header class="d100base-chat-card-header">
+    <div class="d100base-chat-card-title-group">
+      <div class="d100base-chat-card-kicker">{{kicker}}</div>
+      <div class="d100base-chat-card-title">{{title}}</div>
+    </div>
+
+    <div class="d100base-chat-card-badge">
+      {{modeLabel}}
+    </div>
+  </header>
+
+  <section class="d100base-chat-card-body">
+    <div class="d100base-chat-card-main">
+      <div class="d100base-chat-card-result-block">
+        <div class="d100base-chat-card-result-label">Jet retenu</div>
+        <div class="d100base-chat-card-result-value">{{result}}</div>
+      </div>
+
+      <div class="d100base-chat-card-target-block">
+        <div class="d100base-chat-card-target-line">
+          <span class="d100base-chat-card-label">Base</span>
+          <span class="d100base-chat-card-value">{{baseTarget}}%</span>
+        </div>
+
+        <div class="d100base-chat-card-target-line">
+          <span class="d100base-chat-card-label">Cible</span>
+          <span class="d100base-chat-card-value">{{modifiedTarget}}%</span>
+        </div>
+
+        {{#if hasModifier}}
+          <div class="d100base-chat-card-target-line d100base-chat-card-target-line-modifier">
+            <span class="d100base-chat-card-label">Modificateur</span>
+            <span class="d100base-chat-card-value">{{modifierSigned}}</span>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+
+    <div class="d100base-chat-card-meta">
+      {{#if secondRoll}}
+        <div class="d100base-chat-card-meta-row">
+          <span class="d100base-chat-card-label">Jets</span>
+          <span class="d100base-chat-card-value">{{firstRoll}} / {{secondRoll}}</span>
+        </div>
+      {{else}}
+        <div class="d100base-chat-card-meta-row">
+          <span class="d100base-chat-card-label">Jet</span>
+          <span class="d100base-chat-card-value">{{result}}</span>
+        </div>
+      {{/if}}
+
+      <div class="d100base-chat-card-meta-row">
+        <span class="d100base-chat-card-label">Marge</span>
+        <span class="d100base-chat-card-value">{{marginSigned}}</span>
+      </div>
+
+      {{#if extraRows.length}}
+        {{#each extraRows}}
+          <div class="d100base-chat-card-meta-row">
+            <span class="d100base-chat-card-label">{{label}}</span>
+            <span class="d100base-chat-card-value">{{value}}</span>
+          </div>
+        {{/each}}
+      {{/if}}
+    </div>
+  </section>
+
+  <footer class="d100base-chat-card-footer">
+    <div class="d100base-chat-card-outcome">
+      {{outcomeLabel}}
+    </div>
+  </footer>
+</div>

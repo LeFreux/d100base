@@ -10,6 +10,7 @@ const D100BASE_CONTAINER_MIGRATION_VERSION = "0.2.9";
 let d100AttributeHud = null;
 let d100BaseOriginalCombatRollInitiative = null;
 const d100PendingInventoryRenders = new Map();
+let d100BaseSocket = null;
 
 /* ======================================================== */
 /* ======================= INIT ============================ */
@@ -48,7 +49,10 @@ Hooks.once("init", async () => {
     rollCombatantInitiatives,
     patchStandardCombatRollInitiative,
 
+    // Proxy GM pour les transferts d'inventaire inter-acteurs
+    requestInventoryTransferAsGM,
     requestAttributeHudSync,
+	
     migrateLegacyContainers,
     migrateLegacyDefaultContents
   };
@@ -101,7 +105,8 @@ Hooks.once("init", async () => {
 
   await loadTemplates([
     "systems/d100base/templates/partials/inventory-node.hbs",
-    "systems/d100base/templates/partials/localized-wounds.hbs"
+    "systems/d100base/templates/partials/localized-wounds.hbs",
+    "systems/d100base/templates/partials/chat-d100-roll.hbs"
   ]);
 
   /* ========================= */
@@ -130,6 +135,11 @@ Hooks.once("init", async () => {
   
   patchStandardCombatRollInitiative();
 
+});
+
+Hooks.once("socketlib.ready", () => {
+  d100BaseSocket = socketlib.registerSystem("d100base");
+  d100BaseSocket.register("executeInventoryTransfer", executeInventoryTransferAsGM);
 });
 
 /* ======================================================== */
@@ -334,6 +344,292 @@ function patchStandardCombatRollInitiative() {
 }
 
 /* ======================================================== */
+/* ============== INVENTORY TRANSFER SOCKET =============== */
+/* ======================================================== */
+
+async function requestInventoryTransferAsGM(payload = {}) {
+  if (game.user.isGM) {
+    return executeInventoryTransferAsGM(payload);
+  }
+
+  if (!d100BaseSocket) {
+    ui.notifications?.error(
+      game.i18n.localize("D100BASE.Errors.InventoryTransferProxyUnavailable")
+    );
+    throw new Error("D100 Base | socketlib n'est pas disponible.");
+  }
+
+  return d100BaseSocket.executeAsGM("executeInventoryTransfer", payload);
+}
+
+function resolveTransferSourceScene({
+  sourceSceneId = null,
+  sourceTokenId = null
+} = {}) {
+  if (sourceSceneId) {
+    return game.scenes?.get(sourceSceneId) ?? null;
+  }
+
+  if (sourceTokenId) {
+    for (const scene of game.scenes ?? []) {
+      if (scene?.tokens?.get(sourceTokenId)) {
+        return scene;
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveTransferSourceTokenDocument({
+  sourceTokenId = null,
+  sourceSceneId = null
+} = {}) {
+  if (!sourceTokenId) return null;
+
+  const scene = resolveTransferSourceScene({ sourceSceneId, sourceTokenId });
+  if (!scene) return null;
+
+  return scene.tokens?.get(sourceTokenId) ?? null;
+}
+
+function resolveTransferSourceActor({
+  sourceActorId = null,
+  sourceTokenId = null,
+  sourceSceneId = null
+} = {}) {
+  // 1) Priorité absolue : acteur synthétique du token source
+  const sourceTokenDocument = resolveTransferSourceTokenDocument({
+    sourceTokenId,
+    sourceSceneId
+  });
+
+  const sourceTokenActor = sourceTokenDocument?.actor ?? null;
+  if (sourceTokenActor) {
+    return sourceTokenActor;
+  }
+
+  // 2) Fallback final : acteur world
+  if (sourceActorId) {
+    return game.actors?.get(sourceActorId) ?? null;
+  }
+
+  return null;
+}
+
+function getTransferRequestUser(requestingUserId) {
+  if (!requestingUserId) return null;
+  return game.users?.get(requestingUserId) ?? null;
+}
+
+function userHasActorPermission(user, actor, minimumLevel) {
+  if (!user || !actor) return false;
+  return actor.testUserPermission(user, minimumLevel);
+}
+
+function getActorTokensOnScene(scene, actorId) {
+  if (!scene || !actorId) return [];
+
+  return Array.from(scene.tokens ?? [])
+    .filter(token => token?.actor?.id === actorId);
+}
+
+function getVisibleTargetTokensOnScene({
+  scene,
+  sourceTokenDocument,
+  targetActorId
+} = {}) {
+  if (!scene || !sourceTokenDocument || !targetActorId) return [];
+
+  const sourceToken = sourceTokenDocument.object ?? null;
+  if (!sourceToken) return [];
+
+  const visionSource = sourceToken.vision ?? sourceToken.visionSource ?? null;
+  const los = visionSource?.los ?? visionSource?.shape ?? null;
+  if (!los?.contains) return [];
+
+  return getActorTokensOnScene(scene, targetActorId).filter(targetTokenDocument => {
+    if (!targetTokenDocument) return false;
+    if (targetTokenDocument.hidden) return false;
+
+    const targetToken = targetTokenDocument.object ?? null;
+
+    const point = targetToken?.center ?? {
+      x: Number(targetTokenDocument.x ?? 0) + (Number(targetTokenDocument.width ?? 1) * canvas.grid.size / 2),
+      y: Number(targetTokenDocument.y ?? 0) + (Number(targetTokenDocument.height ?? 1) * canvas.grid.size / 2)
+    };
+
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+
+    return los.contains(point.x, point.y);
+  });
+}
+
+function validateInventoryTransferRequest({
+  requestingUserId = null,
+  sourceActor = null,
+  sourceActorId = null,
+  sourceTokenDocument = null,
+  targetActor = null,
+  targetActorId = null,
+  sourceScene = null
+} = {}) {
+  const requestingUser = getTransferRequestUser(requestingUserId);
+
+  if (!requestingUser) {
+    return {
+      success: false,
+      reason: "Utilisateur initiateur du transfert introuvable."
+    };
+  }
+
+  if (!sourceActor) {
+    return {
+      success: false,
+      reason: "Acteur source introuvable."
+    };
+  }
+
+  if (!targetActor) {
+    return {
+      success: false,
+      reason: "Acteur cible introuvable."
+    };
+  }
+
+  if (!sourceScene) {
+    return {
+      success: false,
+      reason: "Scène source introuvable pour le transfert."
+    };
+  }
+
+  if (!sourceTokenDocument) {
+    return {
+      success: false,
+      reason: "Le transfert n'est autorisé que depuis un token source présent sur la scène."
+    };
+  }
+
+  const canTransferFromSource = userHasActorPermission(
+    requestingUser,
+    sourceActor,
+    CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+  );
+
+  if (!canTransferFromSource) {
+    return {
+      success: false,
+      reason: "Vous devez être propriétaire de l'acteur source pour transférer un objet."
+    };
+  }
+
+  const canTransferToTarget = userHasActorPermission(
+    requestingUser,
+    targetActor,
+    CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+  );
+
+  if (!canTransferToTarget) {
+    return {
+      success: false,
+      reason: "Vous n'avez pas les permissions minimales sur l'acteur cible."
+    };
+  }
+
+  const targetTokensOnScene = getActorTokensOnScene(sourceScene, targetActorId);
+  if (!targetTokensOnScene.length) {
+    return {
+      success: false,
+      reason: "L'acteur cible n'a aucun token sur la scène."
+    };
+  }
+
+  const visibleTargetTokens = getVisibleTargetTokensOnScene({
+    scene: sourceScene,
+    sourceTokenDocument,
+    targetActorId
+  });
+
+  if (!visibleTargetTokens.length) {
+    return {
+      success: false,
+      reason: "Aucun token visible de l'acteur cible n'est à portée de vue du token source."
+    };
+  }
+
+  return {
+    success: true,
+    requestingUser
+  };
+}
+
+async function executeInventoryTransferAsGM({
+  requestingUserId = null,
+  sourceActorId,
+  sourceTokenId = null,
+  sourceSceneId = null,
+  targetActorId,
+  itemId,
+  targetContainerId = null,
+  transferAll = true
+} = {}) {
+  const sourceScene = resolveTransferSourceScene({
+    sourceSceneId,
+    sourceTokenId
+  });
+
+  const sourceTokenDocument = resolveTransferSourceTokenDocument({
+    sourceTokenId,
+    sourceSceneId
+  });
+
+  const sourceActor = resolveTransferSourceActor({
+    sourceActorId,
+    sourceTokenId,
+    sourceSceneId
+  });
+
+  const targetActor = game.actors?.get(targetActorId) ?? null;
+
+  if (!itemId) {
+    return {
+      success: false,
+      reason: "Aucun itemId fourni pour le transfert."
+    };
+  }
+
+  if (typeof sourceActor?.transferInventoryItemToActor !== "function") {
+    return {
+      success: false,
+      reason: "La méthode de transfert de l'acteur source est introuvable."
+    };
+  }
+
+  const validation = validateInventoryTransferRequest({
+    requestingUserId,
+    sourceActor,
+    sourceActorId,
+    sourceTokenDocument,
+    targetActor,
+    targetActorId,
+    sourceScene
+  });
+
+  if (!validation.success) {
+    return validation;
+  }
+
+  void transferAll; // compatibilité payload actuel ; non utilisé pour l’instant
+
+  return sourceActor.transferInventoryItemToActor(
+    itemId,
+    targetActor,
+    targetContainerId
+  );
+}
+
+/* ======================================================== */
 /* ================= ATTRIBUTE HUD ========================= */
 /* ======================================================== */
 
@@ -420,6 +716,10 @@ Hooks.on("deleteCombatant", () => {
 
 Hooks.on("canvasTearDown", () => {
   d100AttributeHud?.clear();
+});
+
+Hooks.on("closeWorld", () => {
+  d100BaseSocket = null;
 });
 
 /* ======================================================== */

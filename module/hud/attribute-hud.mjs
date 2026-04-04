@@ -182,7 +182,10 @@ export class D100AttributeHud {
     });
 
     return {
-      hudTitle: game.i18n.localize("D100BASE.HUD.AttributesTitle"),
+	  hudTitle:
+	    this.token?.name ||
+	    this.actor?.name ||
+	    game.i18n.localize("D100BASE.HUD.AttributesTitle"),
       openStateTitle: game.i18n.localize("D100BASE.Actor.State"),
       initiativeTitle: game.i18n.localize("D100BASE.Initiative.RollTitle"),
       initiativeLabel: game.i18n.localize("D100BASE.Initiative.ShortLabel"),

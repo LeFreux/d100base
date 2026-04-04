@@ -1279,45 +1279,262 @@ h2 {
 }
 
 /* ======================================================== */
-/* ================= CHAT / INITIATIVE ===================== */
+/* ================= CHAT / D100 ROLL CARDS =============== */
 /* ======================================================== */
 
-.d100base-chat.d100base-chat-initiative {
+.d100base-chat-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 10px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #a8a8a8;
+  border-radius: 12px;
+
+  background:
+    linear-gradient(180deg, rgba(252,252,252,0.98), rgba(236,236,236,0.98));
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 1px 2px rgba(0,0,0,0.08);
+
+  color: #222;
+}
+
+.d100base-chat-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.d100base-chat-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.d100base-chat-card-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.55);
+}
+
+.d100base-chat-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #111;
+  word-break: break-word;
+}
+
+.d100base-chat-card-badge {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 4px 8px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #adadad;
+  border-radius: 999px;
+  background: linear-gradient(#f5f5f5, #e5e5e5);
+
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #222;
+}
+
+.d100base-chat-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.d100base-chat-card-main {
+  display: grid;
+  grid-template-columns: minmax(96px, 110px) 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.d100base-chat-card-result-block,
+.d100base-chat-card-target-block,
+.d100base-chat-card-meta {
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,245,245,0.96));
+  background: rgba(255,255,255,0.58);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
 }
 
-.d100base-chat-initiative-title {
-  font-size: 14px;
+.d100base-chat-card-result-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.d100base-chat-card-result-label {
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.2;
-  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(0,0,0,0.55);
 }
 
-.d100base-chat-initiative-subline {
-  font-size: 11px;
-  line-height: 1.25;
-  color: rgba(0,0,0,0.75);
-}
-
-.d100base-chat-initiative-score {
-  font-size: 26px;
+.d100base-chat-card-result-value {
+  font-size: 28px;
   font-weight: 800;
   line-height: 1;
   color: #111;
-  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
-.d100base-chat-initiative-outcome {
+.d100base-chat-card-target-block,
+.d100base-chat-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.d100base-chat-card-target-line,
+.d100base-chat-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.d100base-chat-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.7);
+}
+
+.d100base-chat-card-value {
   font-size: 12px;
   font-weight: 700;
-  line-height: 1.2;
-  color: #222;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Permet d’afficher correctement des valeurs plus textuelles
+   (ex: Bonus critique : +50) sans casser l’alignement */
+.d100base-chat-card-meta .d100base-chat-card-value {
+  max-width: 65%;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.d100base-chat-card-footer {
+  padding-top: 2px;
+}
+
+.d100base-chat-card-outcome {
+  min-height: 30px;
+  padding: 6px 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #9d9d9d;
+  border-radius: 10px;
+
+  background: linear-gradient(#f2f2f2, #e2e2e2);
+
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #111;
+  text-align: center;
+}
+
+/* Variantes de résultat */
+
+.d100base-chat-card.is-success .d100base-chat-card-outcome {
+  border-color: #7ea47e;
+  background: linear-gradient(#edf7ed, #dcefdc);
+  color: #1f5a1f;
+}
+
+.d100base-chat-card.is-failure .d100base-chat-card-outcome {
+  border-color: #b38b8b;
+  background: linear-gradient(#faeded, #f1dede);
+  color: #7a2222;
+}
+
+.d100base-chat-card.is-critical-success .d100base-chat-card-outcome {
+  border-color: #b79d49;
+  background: linear-gradient(#fff6d8, #f1e4ae);
+  color: #6c5300;
+}
+
+.d100base-chat-card.is-critical-failure .d100base-chat-card-outcome {
+  border-color: #7e5c5c;
+  background: linear-gradient(#e6d6d6, #d4bebe);
+  color: #4f1d1d;
+}
+
+/* Variantes métier légères */
+
+.d100base-chat-card-attribute .d100base-chat-card-result-value {
+  font-size: 28px;
+}
+
+.d100base-chat-card-initiative .d100base-chat-card-result-value {
+  font-size: 30px;
+}
+
+.d100base-chat-card-initiative .d100base-chat-card-kicker {
+  letter-spacing: 0.06em;
+}
+
+/* Ajustement mobile / chat étroit */
+
+@media (max-width: 520px) {
+  .d100base-chat-card-main {
+    grid-template-columns: 1fr;
+  }
+
+  .d100base-chat-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .d100base-chat-card-badge {
+    align-self: flex-start;
+  }
+
+  .d100base-chat-card-meta .d100base-chat-card-value {
+    max-width: none;
+  }
+}
+
+/* ======================================================== */
+/* ============ CHAT / D100 ROLL CARD TWEAKS ============== */
+/* ======================================================== */
+
+.d100base-chat-card-initiative .d100base-chat-card-meta-row:last-child .d100base-chat-card-label,
+.d100base-chat-card-initiative .d100base-chat-card-meta-row:last-child .d100base-chat-card-value {
+  font-weight: 700;
+}
+
+.d100base-chat-card-initiative .d100base-chat-card-outcome {
+  letter-spacing: 0.02em;
 }
 
 /* ======================================================== */

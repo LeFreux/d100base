@@ -588,8 +588,26 @@ export class D100ActorSheet extends ActorSheet {
     return null;
   }
 
-  _getTransferSourceTokenContext() {
-    return this._getInitiativeTokenContext();
+  /**
+   * Retourne le contexte source réel de la fiche pour les transferts d'inventaire.
+   *
+   * Contrairement à l'initiative, on ne fallback PAS sur un token contrôlé :
+   * on veut uniquement le token qui porte réellement la fiche ouverte.
+   */
+  _getInventoryTransferSourceContext() {
+    const tokenLike =
+      this.token ??
+      this.actor?.token?.object ??
+      this.actor?.token ??
+      null;
+
+    const tokenDocument = tokenLike?.document ?? tokenLike ?? null;
+
+    return {
+      sourceActorId: this.actor.id,
+      sourceTokenId: tokenDocument?.id ?? null,
+      sourceSceneId: tokenDocument?.parent?.id ?? tokenLike?.scene?.id ?? null
+    };
   }
 
   _hasMinimumTransferPermission(actor, minimumLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {
@@ -597,35 +615,81 @@ export class D100ActorSheet extends ActorSheet {
     return actor.testUserPermission(game.user, minimumLevel);
   }
 
-  _getSceneTokensForActor(actor) {
-    const placeables = canvas?.tokens?.placeables ?? [];
-    return placeables.filter(token => token?.actor?.id === actor.id);
+  _getInventoryTransferSourceToken() {
+    const { sourceTokenId, sourceSceneId } = this._getInventoryTransferSourceContext();
+
+    if (!sourceTokenId) return null;
+    if (!canvas?.ready) return null;
+    if (!canvas.scene) return null;
+
+    // Le transfert ne s'appuie que sur le token réellement porteur
+    // de la fiche, et sur la scène actuellement affichée.
+    if (sourceSceneId && canvas.scene.id !== sourceSceneId) return null;
+
+    return canvas.tokens?.get(sourceTokenId) ?? null;
   }
 
-  _isTokenVisibleForTransfer(sourceToken, targetToken) {
-    if (!sourceToken || !targetToken) return false;
-    if (sourceToken.id === targetToken.id) return false;
+  _canUserTransferFromSourceActor() {
+    if (!this.isEditable) return false;
 
-    if (!targetToken.visible) return false;
+    const isOwnerOnSource = this._hasMinimumTransferPermission(
+      this.actor,
+      CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+    );
 
-    // Version simple et robuste :
-    // on considère visible si le token cible est actuellement visible pour l'utilisateur.
-    // Plus tard, on pourra raffiner vers une vraie vérification LOS / perception.
-    return true;
+    if (!isOwnerOnSource) return false;
+
+    // On n'autorise le transfert que depuis une fiche ouverte
+    // dans le contexte réel d'un token présent sur la scène.
+    return !!this._getInventoryTransferSourceToken();
   }
 
-  _canActorBeTransferTargetFromSourceToken(actor, sourceToken, minimumPermissionLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED) {
-    if (!actor || !sourceToken) return false;
-    if (actor.id === this.actor.id) return false;
+  _getSceneTransferCandidateTokens() {
+    const sourceToken = this._getInventoryTransferSourceToken();
+    if (!sourceToken) return [];
 
-    if (!this._hasMinimumTransferPermission(actor, minimumPermissionLevel)) {
-      return false;
+    const sceneTokens = canvas?.tokens?.placeables ?? [];
+
+    return sceneTokens
+      .filter(token => token?.actor?.id)
+      .filter(token => token.document?.id !== sourceToken.document?.id)
+      .filter(token => token.actor?.type === this.actor.type);
+  }
+
+  /**
+   * Visibilité réelle côté client :
+   * on s'appuie sur le calcul de perception déjà effectué par Foundry
+   * pour l'utilisateur courant, au lieu de recalculer un LOS simplifié.
+   */
+  _isTransferTargetVisibleToUser(targetToken) {
+    if (!targetToken) return false;
+    if (targetToken.document?.hidden) return false;
+    return !!targetToken.visible;
+  }
+
+  _getAvailableTransferTargets() {
+    const sourceToken = this._getInventoryTransferSourceToken();
+    if (!sourceToken) return [];
+
+    const visibleTokens = this._getSceneTransferCandidateTokens()
+      .filter(token => this._isTransferTargetVisibleToUser(token))
+      .filter(token => this._hasMinimumTransferPermission(
+        token.actor,
+        CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+      ));
+
+    const actorsById = new Map();
+
+    for (const token of visibleTokens) {
+      const actor = token.actor;
+      if (!actor?.id) continue;
+      if (!actorsById.has(actor.id)) {
+        actorsById.set(actor.id, actor);
+      }
     }
 
-    const sceneTokens = this._getSceneTokensForActor(actor);
-    if (!sceneTokens.length) return false;
-
-    return sceneTokens.some(targetToken => this._isTokenVisibleForTransfer(sourceToken, targetToken));
+    return Array.from(actorsById.values())
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }
 
   _getItemIdFromEventTarget(target) {
@@ -640,23 +704,6 @@ export class D100ActorSheet extends ActorSheet {
     if (!item) return null;
 
     return item;
-  }
-
-  _getAvailableTransferTargets() {
-    const sourceToken = this._getTransferSourceTokenContext();
-
-    if (!sourceToken) {
-      return [];
-    }
-
-    return game.actors
-      .filter(actor => actor?.id && actor.id !== this.actor.id)
-      .filter(actor => actor.type === this.actor.type)
-      .filter(actor => this._canActorBeTransferTargetFromSourceToken(
-        actor,
-        sourceToken,
-        CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED		// Échange uniquement avec acteur dont le joueur possède à minima droits "Limité"
-      ));
   }
 
   _buildTransferTargetOptionsHtml(targetActors = []) {
@@ -691,14 +738,26 @@ export class D100ActorSheet extends ActorSheet {
   }
 
   async _openTransferInventoryDialog(item) {
-    if (!this.isEditable || !item) return false;
+    if (!item) return false;
 
-    const sourceToken = this._getTransferSourceTokenContext();
+    const sourceToken = this._getInventoryTransferSourceToken();
+    const canManageSourceInventory = this._canUserTransferFromSourceActor();
+
+    if (!canManageSourceInventory) {
+      ui.notifications?.warn(
+        this._localize(
+          "D100BASE.Errors.InventoryTransferSourceNotAllowed",
+          "Le transfert n’est possible que depuis la fiche ouverte d’un token sur la scène, dont vous êtes propriétaire."
+        )
+      );
+      return false;
+    }
+
     if (!sourceToken) {
       ui.notifications?.warn(
         this._localize(
-          "D100BASE.Inventory.NoTransferSourceToken",
-          "Aucun token source valide n’est disponible pour ce transfert."
+          "D100BASE.Errors.InventoryTransferMissingSourceToken",
+          "Aucun token source valide n’a été trouvé pour ce transfert."
         )
       );
       return false;
@@ -710,7 +769,7 @@ export class D100ActorSheet extends ActorSheet {
       ui.notifications?.warn(
         this._localize(
           "D100BASE.Inventory.NoTransferTarget",
-          "Aucun acteur cible visible et autorisé n’est disponible pour ce transfert."
+          "Aucun acteur cible sur la scène, autorisé et actuellement visible n’est disponible pour ce transfert."
         )
       );
       return false;
@@ -724,7 +783,7 @@ export class D100ActorSheet extends ActorSheet {
         </div>
 
         <div class="form-group">
-          <label>Acteur cible visible</label>
+          <label>Acteur cible autorisé et actuellement visible</label>
           <select name="target-actor-id">
             ${this._buildTransferTargetOptionsHtml(targetActors)}
           </select>
@@ -750,36 +809,71 @@ export class D100ActorSheet extends ActorSheet {
                 return;
               }
 
-              const targetActor = game.actors.get(targetActorId);
+              const allowedTargets = this._getAvailableTransferTargets();
+              const targetActor = allowedTargets.find(actor => actor.id === targetActorId) ?? null;
+
               if (!targetActor) {
                 ui.notifications?.warn(
-                  this._localize("D100BASE.Inventory.TransferTargetNotFound", "Acteur cible introuvable.")
+                  this._localize(
+                    "D100BASE.Inventory.TransferTargetNotFound",
+                    "Acteur cible introuvable, non autorisé, hors scène ou non visible actuellement."
+                  )
+                );
+                resolve(false);
+                return;
+              }
+              if (typeof game.d100base?.requestInventoryTransferAsGM !== "function") {
+                ui.notifications?.error(
+                  this._localize(
+                    "D100BASE.Errors.InventoryTransferProxyUnavailable",
+                    "Le proxy GM de transfert est indisponible."
+                  )
                 );
                 resolve(false);
                 return;
               }
 
-              const sourceToken = this._getTransferSourceTokenContext();
+              try {
+                const sourceContext = this._getInventoryTransferSourceContext();
 
-              const result = await this.actor.transferInventoryItemToActorRoot(
-                item.id,
-                targetActor,
-                { sourceToken }
-              );
+                const result = await game.d100base.requestInventoryTransferAsGM({
+				  requestingUserId: game.user.id,
+                  ...sourceContext,
+                  targetActorId: targetActor.id,
+                  itemId: item.id,
+                  targetContainerId: null
+                });
 
-              if (!result?.success) {
+                if (!result?.success) {
+                  ui.notifications?.warn(
+                    result?.reason || this._localize(
+                      "D100BASE.Errors.InventoryTransferFailed",
+                      "Erreur pendant le transfert d'inventaire."
+                    )
+                  );
+                  resolve(false);
+                  return;
+                }
+
+                ui.notifications?.info(
+                  this._format(
+                    "D100BASE.Inventory.TransferSuccess",
+                    { actor: targetActor.name },
+                    `Transfert effectué vers ${targetActor.name}.`
+                  )
+                );
+
+                resolve(true);
+              } catch (err) {
+                console.error("D100 Base | Erreur transfert inventaire via proxy GM", err);
+                ui.notifications?.error(
+                  this._localize(
+                    "D100BASE.Errors.InventoryTransferFailedDetailed",
+                    "Erreur pendant le transfert d'inventaire. Consulte la console."
+                  )
+                );
                 resolve(false);
-                return;
               }
-
-              ui.notifications?.info(
-                this._format(
-                  "D100BASE.Inventory.TransferSuccess",
-                  { actor: targetActor.name },
-                  `Transfert effectué vers ${targetActor.name}.`
-                )
-              );
-              resolve(true);
             }
           },
           cancel: {
@@ -800,6 +894,8 @@ export class D100ActorSheet extends ActorSheet {
   async _onTransferInventoryItem(event) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!this.isEditable) return false;
 
     const item = this._getTransferableItemFromEventTarget(event.currentTarget);
     if (!item) return false;
@@ -1093,6 +1189,11 @@ export class D100ActorSheet extends ActorSheet {
 
 	if (!this.isEditable) return;
 
+    /* TRANSFER */
+    html.find('[data-action="transfer-item"]').click(async ev => {
+      await this._onTransferInventoryItem(ev);
+    });
+
 	/* AJOUTER UNE APTITUDE */
 	html.find(".aptitude-add-card").click(async ev => {
 	  ev.preventDefault();
@@ -1156,11 +1257,6 @@ export class D100ActorSheet extends ActorSheet {
       if (!id) return;
 
       await this.actor.extractItemFromContainer(id);
-    });
-
-    /* TRANSFER */
-    html.find('[data-action="transfer-item"]').click(async ev => {
-      await this._onTransferInventoryItem(ev);
     });
 
     /* SORT */
